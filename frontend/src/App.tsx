@@ -10,6 +10,14 @@ import { UsersList } from './pages/UsersList';
 import { UserCreate } from './pages/UserCreate';
 import { DepartmentList } from './pages/DepartmentList';
 import { DepartmentCreate } from './pages/DepartmentCreate';
+import { lazy } from 'react';
+import { SuspenseLoader } from './components/ui/SuspenseLoader';
+import { WorkflowList } from './pages/WorkflowList';
+import { WorkflowEdit } from './pages/WorkflowEdit';
+
+// Lazy loaded features (Suspense compliance)
+const Dashboard = lazy(() => import('./features/dashboard/components/Dashboard'));
+const Settings = lazy(() => import('./features/settings/components/Settings'));
 
 import type { ReactNode } from 'react';
 
@@ -33,7 +41,12 @@ export default function App() {
         <PrivateRoute>
           <Layout>
             <Routes>
-              <Route path="/" element={<Navigate to="purchases" replace />} />
+              <Route path="/" element={<Navigate to="dashboard" replace />} />
+              <Route path="dashboard" element={
+                <SuspenseLoader>
+                  <Dashboard />
+                </SuspenseLoader>
+              } />
               <Route path="purchases" element={<PurchaseList />} />
               <Route path="purchases/new" element={<PurchaseCreate />} />
               <Route path="purchases/:id" element={<PurchaseDetails />} />
@@ -41,6 +54,14 @@ export default function App() {
               <Route path="users/new" element={<UserCreate />} />
               <Route path="departments" element={<DepartmentList />} />
               <Route path="departments/new" element={<DepartmentCreate />} />
+              <Route path="workflows" element={<WorkflowList />} />
+              <Route path="workflows/new" element={<WorkflowEdit />} />
+              <Route path="workflows/:id/edit" element={<WorkflowEdit />} />
+              <Route path="settings" element={
+                <SuspenseLoader>
+                  <Settings />
+                </SuspenseLoader>
+              } />
             </Routes>
           </Layout>
         </PrivateRoute>

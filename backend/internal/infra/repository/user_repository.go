@@ -45,3 +45,7 @@ func (r *userRepository) FindAll(ctx context.Context) ([]models.User, error) {
 func (r *userRepository) Create(ctx context.Context, user *models.User) error {
 	return r.db.WithContext(ctx).Create(user).Error
 }
+
+func (r *userRepository) Update(ctx context.Context, user *models.User) error {
+	return r.db.WithContext(ctx).Save(user).Error
+}

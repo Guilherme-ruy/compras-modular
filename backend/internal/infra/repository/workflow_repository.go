@@ -38,6 +38,26 @@ func (r *workflowRepository) FindWorkflowForPurchase(ctx context.Context, depart
 	return &workflow, nil
 }
 
+func (r *workflowRepository) FindAll(ctx context.Context) ([]models.ApprovalWorkflow, error) {
+	var workflows []models.ApprovalWorkflow
+	err := r.db.WithContext(ctx).Find(&workflows).Error
+	return workflows, err
+}
+
+func (r *workflowRepository) UpdateWorkflow(ctx context.Context, workflow *models.ApprovalWorkflow) error {
+	return r.db.WithContext(ctx).Save(workflow).Error
+}
+
+func (r *workflowRepository) DeleteWorkflow(ctx context.Context, workflowID uuid.UUID) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Cascade delete steps first if FK isn't set to do it automatically
+		if err := tx.Where("workflow_id = ?", workflowID).Delete(&models.WorkflowStep{}).Error; err != nil {
+			return err
+		}
+		return tx.Delete(&models.ApprovalWorkflow{}, "id = ?", workflowID).Error
+	})
+}
+
 func (r *workflowRepository) FindStepsByWorkflowID(ctx context.Context, workflowID uuid.UUID) ([]models.WorkflowStep, error) {
 	var steps []models.WorkflowStep
 	err := r.db.WithContext(ctx).
@@ -65,4 +85,22 @@ func (r *workflowRepository) CreateApprovalLog(ctx context.Context, tx *gorm.DB,
 		db = tx
 	}
 	return db.WithContext(ctx).Create(approval).Error
+}
+
+func (r *workflowRepository) ReplaceSteps(ctx context.Context, workflowID uuid.UUID, newSteps []models.WorkflowStep) error {
+	return r.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
+		// Delete old steps
+		if err := tx.Where("workflow_id = ?", workflowID).Delete(&models.WorkflowStep{}).Error; err != nil {
+			return err
+		}
+
+		// Insert new steps
+		if len(newSteps) > 0 {
+			if err := tx.Create(&newSteps).Error; err != nil {
+				return err
+			}
+		}
+
+		return nil
+	})
 }

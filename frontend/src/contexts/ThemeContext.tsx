@@ -19,9 +19,13 @@ type ThemeConfigType = {
 
 type ThemeContextType = {
     isLoading: boolean;
+    applyTheme: (colors: Record<string, string>) => void;
 };
 
-const ThemeContext = createContext<ThemeContextType>({ isLoading: true });
+const ThemeContext = createContext<ThemeContextType>({ 
+    isLoading: true,
+    applyTheme: () => {} 
+});
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
     const [isLoading, setIsLoading] = useState(true);
@@ -33,11 +37,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
                 const response = await axios.get<ThemeConfigType>(`${baseURL}/settings/theme`);
 
                 if (response.data && response.data.primary) {
-                    const root = document.documentElement;
-                    // Inject CSS variables
-                    Object.entries(response.data.primary).forEach(([key, value]) => {
-                        root.style.setProperty(`--color-primary-${key}`, value as string);
-                    });
+                    applyThemeColors(response.data.primary);
                 }
             } catch (error) {
                 console.error('Failed to load theme configuration:', error);
@@ -49,8 +49,17 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         fetchTheme();
     }, []);
 
+    const applyThemeColors = (colors: Record<string, string>) => {
+        const root = document.documentElement;
+        Object.entries(colors).forEach(([key, value]) => {
+            // Support both internal naming conventions
+            root.style.setProperty(`--color-brand-${key}`, value);
+            root.style.setProperty(`--color-primary-${key}`, value);
+        });
+    };
+
     return (
-        <ThemeContext.Provider value={{ isLoading }}>
+        <ThemeContext.Provider value={{ isLoading, applyTheme: applyThemeColors }}>
             {/* Block rendering until theme arrives to avoid flash of unstyled content if we want,
           or just let fallback handle it. We will use fallback for simplicity. */}
             {children}

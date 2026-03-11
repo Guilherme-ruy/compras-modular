@@ -6,6 +6,7 @@ import (
 	"compras-modular/backend/internal/infra/database"
 	"compras-modular/backend/internal/infra/models"
 
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	"golang.org/x/crypto/bcrypt"
 	"gorm.io/datatypes"
@@ -35,15 +36,24 @@ func main() {
 	}
 
 	// 2. Roles
-	db.Model(&models.Role{}).Count(&count)
-	var adminRole models.Role
+	var adminRole, buyerRole, approverRole models.Role
 
-	if count == 0 {
-		adminRole = models.Role{Name: "SUPERADMIN", Permissions: datatypes.JSON([]byte(`["all"]`))}
+	db.Where("name = ?", "SUPERADMIN").FirstOrInit(&adminRole, models.Role{Name: "SUPERADMIN", Permissions: datatypes.JSON([]byte(`["all"]`))})
+	if adminRole.ID == uuid.Nil {
 		db.Create(&adminRole)
 		log.Println("Created Role: SUPERADMIN")
-	} else {
-		db.Where("name = ?", "SUPERADMIN").First(&adminRole)
+	}
+
+	db.Where("name = ?", "COMPRADOR").FirstOrInit(&buyerRole, models.Role{Name: "COMPRADOR", Permissions: datatypes.JSON([]byte(`["purchase:create", "purchase:read"]`))})
+	if buyerRole.ID == uuid.Nil {
+		db.Create(&buyerRole)
+		log.Println("Created Role: COMPRADOR")
+	}
+
+	db.Where("name = ?", "APROVADOR").FirstOrInit(&approverRole, models.Role{Name: "APROVADOR", Permissions: datatypes.JSON([]byte(`["purchase:read", "purchase:approve"]`))})
+	if approverRole.ID == uuid.Nil {
+		db.Create(&approverRole)
+		log.Println("Created Role: APROVADOR")
 	}
 
 	// 3. Departments (Skipped for fresh setup)

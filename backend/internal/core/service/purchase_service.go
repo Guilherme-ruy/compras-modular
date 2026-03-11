@@ -25,9 +25,10 @@ type PurchaseItemInput struct {
 }
 
 type PurchaseResponse struct {
-	Purchase models.Purchase       `json:"purchase"`
-	Items    []models.PurchaseItem `json:"items"`
-	StepInfo *StepInfoResponse     `json:"step_info,omitempty"`
+	Purchase models.Purchase           `json:"purchase"`
+	Items    []models.PurchaseItem     `json:"items"`
+	StepInfo *StepInfoResponse         `json:"step_info,omitempty"`
+	History  []models.PurchaseApproval `json:"history,omitempty"`
 }
 
 type StepInfoResponse struct {
@@ -133,10 +134,13 @@ func (s *purchaseService) GetPurchaseByID(ctx context.Context, id uuid.UUID, use
 		}
 	}
 
+	history, _ := s.purchaseRepo.GetApprovalHistory(ctx, id)
+
 	return &PurchaseResponse{
 		Purchase: *purchase,
 		Items:    items,
 		StepInfo: stepInfo,
+		History:  history,
 	}, nil
 }
 

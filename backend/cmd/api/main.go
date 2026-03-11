@@ -39,6 +39,8 @@ func main() {
 	deptSvc := service.NewDepartmentService(deptRepo)
 	userMgtSvc := service.NewUserManagementService(userRepo)
 	roleSvc := service.NewRoleService(roleRepo)
+	workflowMgmtSvc := service.NewWorkflowManagementService(workflowRepo)
+	dashboardSvc := service.NewDashboardService(database.DB, userRepo)
 
 	// 4. Setup Handlers
 	authHandler := handlers.NewAuthHandler(authSvc)
@@ -48,6 +50,8 @@ func main() {
 	deptHandler := handlers.NewDepartmentHandler(deptSvc)
 	userMgtHandler := handlers.NewUserManagementHandler(userMgtSvc)
 	roleHandler := handlers.NewRoleHandler(roleSvc)
+	workflowMgmtHandler := handlers.NewWorkflowManagementHandler(workflowMgmtSvc)
+	dashboardHandler := handlers.NewDashboardHandler(dashboardSvc)
 
 	// 5. Setup Router
 	r := chi.NewRouter()
@@ -75,6 +79,9 @@ func main() {
 			r.Use(middlewares.JWTAuthentication)
 
 			r.Get("/departments", deptHandler.List)
+			r.Get("/dashboard/metrics", dashboardHandler.GetMetrics)
+
+			r.Put("/users/profile", userMgtHandler.UpdateProfile)
 
 			r.Post("/purchases", purchaseHandler.Create)
 			r.Get("/purchases", purchaseHandler.List)
@@ -93,9 +100,18 @@ func main() {
 
 			r.Post("/departments", deptHandler.Create)
 
+			r.Get("/system-settings", settingsHandler.GetSettings)
+			r.Put("/system-settings", settingsHandler.UpdateSettings)
+
 			r.Get("/roles", roleHandler.List)
 			r.Get("/users", userMgtHandler.List)
 			r.Post("/users", userMgtHandler.Create)
+
+			// Workflow Management
+			r.Get("/workflows", workflowMgmtHandler.List)
+			r.Post("/workflows", workflowMgmtHandler.Create)
+			r.Put("/workflows/{id}", workflowMgmtHandler.Update)
+			r.Delete("/workflows/{id}", workflowMgmtHandler.Delete)
 		})
 	})
 

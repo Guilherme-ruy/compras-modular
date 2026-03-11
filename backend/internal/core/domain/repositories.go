@@ -13,6 +13,7 @@ type UserRepository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*models.User, error)
 	FindAll(ctx context.Context) ([]models.User, error)
 	Create(ctx context.Context, user *models.User) error
+	Update(ctx context.Context, user *models.User) error
 }
 
 type RoleRepository interface {
@@ -37,6 +38,7 @@ type PurchaseRepository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*models.Purchase, []models.PurchaseItem, error)
 	List(ctx context.Context, departmentID *uuid.UUID, status string) ([]models.Purchase, error)
 	UpdateStatusAndStep(ctx context.Context, tx *gorm.DB, purchaseID uuid.UUID, status string, stepID *uuid.UUID) error
+	GetApprovalHistory(ctx context.Context, purchaseID uuid.UUID) ([]models.PurchaseApproval, error)
 }
 
 type WorkflowRepository interface {
@@ -46,4 +48,10 @@ type WorkflowRepository interface {
 	FindStepsByWorkflowID(ctx context.Context, workflowID uuid.UUID) ([]models.WorkflowStep, error)
 	FindStepByID(ctx context.Context, stepID uuid.UUID) (*models.WorkflowStep, error)
 	CreateApprovalLog(ctx context.Context, tx *gorm.DB, approval *models.PurchaseApproval) error
+
+	// Management Methods
+	FindAll(ctx context.Context) ([]models.ApprovalWorkflow, error)
+	UpdateWorkflow(ctx context.Context, workflow *models.ApprovalWorkflow) error
+	DeleteWorkflow(ctx context.Context, workflowID uuid.UUID) error
+	ReplaceSteps(ctx context.Context, workflowID uuid.UUID, newSteps []models.WorkflowStep) error
 }

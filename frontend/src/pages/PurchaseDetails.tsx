@@ -28,6 +28,13 @@ type PurchaseResponse = {
         approver_role?: string;
         approver_name?: string;
     };
+    history?: {
+        id: string;
+        action: string;
+        acted_by: string;
+        comments: string;
+        acted_at: string;
+    }[];
 };
 
 export function PurchaseDetails() {
@@ -38,10 +45,21 @@ export function PurchaseDetails() {
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
     const [comments, setComments] = useState('');
+    const [usersLog, setUsersLog] = useState<any[]>([]);
 
     useEffect(() => {
         fetchDetails();
+        fetchUsers();
     }, [id]);
+
+    const fetchUsers = async () => {
+        try {
+            const res = await api.get('/users');
+            setUsersLog(res.data || []);
+        } catch (err) {
+            console.error("Failed to load users for timeline", err);
+        }
+    };
 
     const fetchDetails = async () => {
         try {
@@ -88,6 +106,27 @@ export function PurchaseDetails() {
 
     // Cross-Department Check
     const hasDepartmentPermission = user?.departments?.includes(purchase.department_id);
+
+    const getActorName = (userId: string) => {
+        const u = usersLog.find(u => u.id === userId);
+        return u ? u.name : 'Sistema';
+    };
+
+    // Helper to render URLs as clickable links
+    const renderComment = (text: string) => {
+        if (!text) return null;
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        return text.split(urlRegex).map((part, i) => {
+            if (part.match(urlRegex)) {
+                return (
+                    <a key={i} href={part} target="_blank" rel="noopener noreferrer" className="text-brand-600 hover:text-brand-800 underline">
+                        {part}
+                    </a>
+                );
+            }
+            return <span key={i}>{part}</span>;
+        });
+    };
 
     return (
         <div className="space-y-6">
@@ -150,6 +189,51 @@ export function PurchaseDetails() {
                             </tbody>
                         </table>
                     </div>
+
+                    {/* Timeline / History Section */}
+                    {data.history && data.history.length > 0 && (
+                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+                            <h2 className="text-lg font-semibold text-slate-800 border-b border-slate-100 pb-2 mb-6">Histórico de Aprovações</h2>
+                            
+                            <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-slate-200 before:to-transparent">
+                                {data.history.map((log) => {
+                                    const isApprove = log.action === 'APPROVED';
+                                    const isReject = log.action === 'REJECTED';
+                                    const isSubmit = log.action === 'SUBMITTED';
+
+                                    return (
+                                        <div key={log.id} className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
+                                            {/* Icon */}
+                                            <div className={`flex items-center justify-center w-10 h-10 rounded-full border-4 border-white shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 shadow-sm z-10 ${isApprove ? 'bg-emerald-500 text-white' : isReject ? 'bg-red-500 text-white' : 'bg-blue-500 text-white'}`}>
+                                                {isApprove ? <Check className="w-4 h-4" /> : isReject ? <X className="w-4 h-4" /> : <ArrowLeft className="w-4 h-4 rotate-180" />}
+                                            </div>
+
+                                            {/* Card */}
+                                            <div className="w-[calc(100%-4rem)] md:w-[calc(50%-2.5rem)] bg-white p-4 rounded-xl border border-slate-200 shadow-sm relative">
+                                                <div className="flex items-center justify-between mb-1">
+                                                    <span className="font-bold text-slate-800 text-sm">{getActorName(log.acted_by)}</span>
+                                                    <span className="text-xs font-medium text-slate-400">
+                                                        {new Date(log.acted_at).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' })}
+                                                    </span>
+                                                </div>
+                                                <div className="text-xs font-medium mb-3">
+                                                    {isApprove && <span className="text-emerald-600">Aprovou a etapa</span>}
+                                                    {isReject && <span className="text-red-600">Rejeitou a compra</span>}
+                                                    {isSubmit && <span className="text-blue-600">Enviou para aprovação</span>}
+                                                </div>
+                                                
+                                                {log.comments && (
+                                                    <div className="text-sm text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100 whitespace-pre-wrap">
+                                                        {renderComment(log.comments)}
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    );
+                                })}
+                            </div>
+                        </div>
+                    )}
                 </div>
 
                 {/* Sidebar Status & Actions */}

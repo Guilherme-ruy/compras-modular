@@ -83,3 +83,15 @@ func (r *purchaseRepository) UpdateStatusAndStep(ctx context.Context, tx *gorm.D
 		"current_step_id": stepID,
 	}).Error
 }
+
+func (r *purchaseRepository) GetApprovalHistory(ctx context.Context, purchaseID uuid.UUID) ([]models.PurchaseApproval, error) {
+	var history []models.PurchaseApproval
+	err := r.db.WithContext(ctx).
+		Where("purchase_id = ?", purchaseID).
+		Order("acted_at asc").
+		Find(&history).Error
+	if err != nil {
+		return nil, err
+	}
+	return history, nil
+}

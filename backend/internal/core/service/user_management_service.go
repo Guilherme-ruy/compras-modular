@@ -22,6 +22,7 @@ type UserInput struct {
 type UserManagementService interface {
 	ListUsers(ctx context.Context) ([]models.User, error)
 	CreateUser(ctx context.Context, input UserInput) (*models.User, error)
+	UpdateUser(ctx context.Context, id uuid.UUID, input UserInput) (*models.User, error)
 }
 
 type userManagementService struct {
@@ -75,6 +76,40 @@ func (s *userManagementService) CreateUser(ctx context.Context, input UserInput)
 	}
 
 	err = s.userRepo.Create(ctx, user)
+	if err != nil {
+		return nil, err
+	}
+
+	return user, nil
+}
+
+func (s *userManagementService) UpdateUser(ctx context.Context, id uuid.UUID, input UserInput) (*models.User, error) {
+	user, err := s.userRepo.FindByID(ctx, id)
+	if err != nil {
+		return nil, errors.New("user not found")
+	}
+
+	if input.Name != "" {
+		user.Name = input.Name
+	}
+	
+	if input.Email != "" && input.Email != user.Email {
+		existing, _ := s.userRepo.FindByEmail(ctx, input.Email)
+		if existing != nil {
+			return nil, errors.New("email already in use")
+		}
+		user.Email = input.Email
+	}
+
+	if input.Password != "" {
+		hash, err := bcrypt.GenerateFromPassword([]byte(input.Password), bcrypt.DefaultCost)
+		if err != nil {
+			return nil, errors.New("failed to hash password")
+		}
+		user.PasswordHash = string(hash)
+	}
+
+	err = s.userRepo.Update(ctx, user)
 	if err != nil {
 		return nil, err
 	}

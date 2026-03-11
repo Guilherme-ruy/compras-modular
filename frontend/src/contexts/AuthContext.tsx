@@ -4,6 +4,8 @@ import type { ReactNode } from 'react';
 type UserContextData = {
     userId: string;
     roleName: string;
+    name: string;
+    email: string;
     departments: string[];
 };
 
@@ -43,6 +45,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                 setUser({
                     userId: decoded.user_id,
                     roleName: decoded.role_name,
+                    name: decoded.name || '',
+                    email: decoded.email || '',
                     departments: decoded.departments || []
                 });
             }
