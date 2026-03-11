@@ -52,8 +52,17 @@ func (h *PurchaseHandler) List(w http.ResponseWriter, r *http.Request) {
 	}
 
 	statusFilter := r.URL.Query().Get("status")
+	deptIDStr := r.URL.Query().Get("dept_id")
+	
+	var deptFilter *uuid.UUID
+	if deptIDStr != "" {
+		parsedID, err := uuid.Parse(deptIDStr)
+		if err == nil {
+			deptFilter = &parsedID
+		}
+	}
 
-	purchases, err := h.purchaseService.ListPurchases(r.Context(), userClaims.UserID, userClaims.RoleName, statusFilter)
+	purchases, err := h.purchaseService.ListPurchases(r.Context(), userClaims.UserID, userClaims.RoleName, statusFilter, deptFilter)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return

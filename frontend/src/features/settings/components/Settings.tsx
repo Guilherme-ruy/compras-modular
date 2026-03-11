@@ -9,7 +9,7 @@ import ThemeTab from './ThemeTab';
 
 export default function Settings() {
     const { user } = useAuth();
-    const [activeTab, setActiveTab] = useState<'profile' | 'company' | 'theme'>('profile');
+    const [activeTab, setActiveTab] = useState<'company' | 'theme'>('company');
 
     // 1. Suspense-first fetching. We fetch SystemSettings early since both CompanyTab and ThemeTab need it.
     // We only fetch it if the user is a SUPERADMIN (as normal users can't edit settings)
@@ -19,7 +19,6 @@ export default function Settings() {
     });
 
     const tabs = [
-        { id: 'profile', label: 'Meu Perfil', icon: User },
         ...(user?.roleName === 'SUPERADMIN' ? [
             { id: 'company', label: 'Empresa', icon: Building2 },
             { id: 'theme', label: 'Aparência', icon: Palette },
@@ -59,7 +58,6 @@ export default function Settings() {
 
                 {/* SETTINGS CONTENT AREA */}
                 <div className="flex-1 p-8 md:p-10">
-                    {activeTab === 'profile' && <ProfileTab />}
                     {activeTab === 'company' && user?.roleName === 'SUPERADMIN' && (
                         <CompanyTab initialSettings={systemSettings} />
                     )}

@@ -34,10 +34,14 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
         const fetchTheme = async () => {
             try {
                 const baseURL = import.meta.env.VITE_API_URL || 'http://localhost:8080/api/v1';
-                const response = await axios.get<ThemeConfigType>(`${baseURL}/settings/theme`);
+                const response = await axios.get<any>(`${baseURL}/settings/theme`);
 
-                if (response.data && response.data.primary) {
-                    applyThemeColors(response.data.primary);
+                if (response.data) {
+                    // Handle both { primary: { ...colors } } and flat { ...colors }
+                    const colors = response.data.primary || response.data;
+                    if (colors && typeof colors === 'object' && Object.keys(colors).length > 0) {
+                        applyThemeColors(colors);
+                    }
                 }
             } catch (error) {
                 console.error('Failed to load theme configuration:', error);

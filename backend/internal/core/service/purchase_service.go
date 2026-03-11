@@ -40,7 +40,7 @@ type StepInfoResponse struct {
 type PurchaseService interface {
 	CreatePurchase(ctx context.Context, userID uuid.UUID, input PurchaseInput) (*models.Purchase, error)
 	GetPurchaseByID(ctx context.Context, id uuid.UUID, userID uuid.UUID, roleName string) (*PurchaseResponse, error)
-	ListPurchases(ctx context.Context, userID uuid.UUID, roleName string, statusFilter string) ([]models.Purchase, error)
+	ListPurchases(ctx context.Context, userID uuid.UUID, roleName string, statusFilter string, deptFilter *uuid.UUID) ([]models.Purchase, error)
 }
 
 type purchaseService struct {
@@ -144,8 +144,8 @@ func (s *purchaseService) GetPurchaseByID(ctx context.Context, id uuid.UUID, use
 	}, nil
 }
 
-func (s *purchaseService) ListPurchases(ctx context.Context, userID uuid.UUID, roleName string, statusFilter string) ([]models.Purchase, error) {
-	var filterDeptID *uuid.UUID
+func (s *purchaseService) ListPurchases(ctx context.Context, userID uuid.UUID, roleName string, statusFilter string, deptFilter *uuid.UUID) ([]models.Purchase, error) {
+	var finalDeptID *uuid.UUID
 
 	if roleName == "REQUESTER" {
 		user, err := s.userRepo.FindByID(ctx, userID)
@@ -155,32 +155,39 @@ func (s *purchaseService) ListPurchases(ctx context.Context, userID uuid.UUID, r
 		if len(user.Departments) == 0 {
 			return []models.Purchase{}, nil
 		}
+
+		// Security: Requesters can only filter for departments they belong to.
+		// If no filter is provided, we'll let the repo handle it or default to their first dept for now.
+		// In a multi-dept scenario, ideally the repo should accept a list of IDs.
 		
-		// Note: The List method signature only accepts a single departmentID pointer.
-		// If the requester has multiple departments, we can either:
-		// A. Fetch all and filter in memory
-		// B. Change the repository to accept multiple arrays.
-		// For backward compatibility and simplicity, the user only has 1 or logs into 1 context.
-		// Let's use the first department as the filter point for now if it requires it,
-		// but ideally `purchaseRepo.List` should be rewritten.
-		firstID := user.Departments[0].ID
-		filterDeptID = &firstID
-	}
-	// For ADMIN, SUPERADMIN, VIEWER filterDeptID remains nil to fetch all
-	// Note: Currently, ListPurchases with REQUESTER uses filterDeptID.
-	// We'll leave filterDeptID as nil to rely purely on the underlying implementation,
-	// but if the user has multiple departments, they want to see purchases bound to ANY of them.
-	// Since purchaseRepo.List currently accepts *uuid.UUID, we might have an architectural gap depending on how it's written.
-	// We'll pass the FIRST department ID as a fallback, but the optimal is updating the repo list schema.
-	if roleName == "REQUESTER" && filterDeptID == nil {
-		user, err := s.userRepo.FindByID(ctx, userID)
-		if err == nil && len(user.Departments) > 0 {
-			firstID := user.Departments[0].ID
-			filterDeptID = &firstID
+		isAuthorizedDept := false
+		if deptFilter != nil {
+			for _, d := range user.Departments {
+				if d.ID == *deptFilter {
+					isAuthorizedDept = true
+					break
+				}
+			}
 		}
+
+		if deptFilter != nil && !isAuthorizedDept {
+			return nil, errors.New("unauthorized to view purchases for this department")
+		}
+
+		if deptFilter != nil {
+			finalDeptID = deptFilter
+		} else {
+			// Default to first department if requester doesn't specify one
+			// (Assuming requester must always be scoped to a department)
+			firstID := user.Departments[0].ID
+			finalDeptID = &firstID
+		}
+	} else {
+		// ADMIN, SUPERADMIN, VIEWER can filter by any department
+		finalDeptID = deptFilter
 	}
 
-	purchases, err := s.purchaseRepo.List(ctx, filterDeptID, statusFilter)
+	purchases, err := s.purchaseRepo.List(ctx, finalDeptID, statusFilter)
 	if err != nil {
 		return nil, err
 	}
