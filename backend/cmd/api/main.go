@@ -29,18 +29,25 @@ func main() {
 	settingsRepo := repository.NewSystemSettingsRepository(database.DB)
 	purchaseRepo := repository.NewPurchaseRepository(database.DB)
 	workflowRepo := repository.NewWorkflowRepository(database.DB)
+	deptRepo := repository.NewDepartmentRepository(database.DB)
 
 	// 3. Setup Services
 	authSvc := service.NewAuthService(userRepo, roleRepo)
 	settingsSvc := service.NewSettingsService(settingsRepo)
-	purchaseSvc := service.NewPurchaseService(purchaseRepo, userRepo)
-	workflowSvc := service.NewWorkflowService(database.DB, purchaseRepo, workflowRepo)
+	purchaseSvc := service.NewPurchaseService(purchaseRepo, userRepo, workflowRepo, roleRepo)
+	workflowSvc := service.NewWorkflowService(database.DB, purchaseRepo, workflowRepo, userRepo)
+	deptSvc := service.NewDepartmentService(deptRepo)
+	userMgtSvc := service.NewUserManagementService(userRepo)
+	roleSvc := service.NewRoleService(roleRepo)
 
 	// 4. Setup Handlers
 	authHandler := handlers.NewAuthHandler(authSvc)
 	settingsHandler := handlers.NewSettingsHandler(settingsSvc)
 	purchaseHandler := handlers.NewPurchaseHandler(purchaseSvc)
 	workflowHandler := handlers.NewWorkflowHandler(workflowSvc)
+	deptHandler := handlers.NewDepartmentHandler(deptSvc)
+	userMgtHandler := handlers.NewUserManagementHandler(userMgtSvc)
+	roleHandler := handlers.NewRoleHandler(roleSvc)
 
 	// 5. Setup Router
 	r := chi.NewRouter()
@@ -67,6 +74,8 @@ func main() {
 		r.Group(func(r chi.Router) {
 			r.Use(middlewares.JWTAuthentication)
 
+			r.Get("/departments", deptHandler.List)
+
 			r.Post("/purchases", purchaseHandler.Create)
 			r.Get("/purchases", purchaseHandler.List)
 			r.Get("/purchases/{id}", purchaseHandler.Get)
@@ -75,6 +84,18 @@ func main() {
 			r.Post("/purchases/{id}/submit", workflowHandler.Submit)
 			r.Post("/purchases/{id}/approve", workflowHandler.Approve)
 			r.Post("/purchases/{id}/reject", workflowHandler.Reject)
+		})
+
+		// Admin routes (SUPERADMIN)
+		r.Group(func(r chi.Router) {
+			r.Use(middlewares.JWTAuthentication)
+			r.Use(middlewares.RequireRole("SUPERADMIN"))
+
+			r.Post("/departments", deptHandler.Create)
+
+			r.Get("/roles", roleHandler.List)
+			r.Get("/users", userMgtHandler.List)
+			r.Post("/users", userMgtHandler.Create)
 		})
 	})
 

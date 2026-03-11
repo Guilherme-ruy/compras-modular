@@ -69,10 +69,8 @@ func (h *WorkflowHandler) Approve(w http.ResponseWriter, r *http.Request) {
 	var req ActionRequest
 	json.NewDecoder(r.Body).Decode(&req)
 
-	// In a real app we'd fetch the RoleID. Since auth service wasn't requested to expose it to the token,
-	// I will just use a helper to get RoleID from UserService, but let's assume we can fetch it via context.
 	// We'll rely on the handler's access to the user through UserID for now.
-	roleID := r.Context().Value("role_id").(uuid.UUID) // THIS MUST BE INJECTED BY AUTH MIDDLEWARE
+	roleID := userClaims.RoleID
 
 	if err := h.workflowService.ApprovePurchase(r.Context(), purchaseID, userClaims.UserID, roleID, req.Comments); err != nil {
 		if strings.Contains(err.Error(), "403 Forbidden") {
@@ -107,7 +105,7 @@ func (h *WorkflowHandler) Reject(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	roleID := r.Context().Value("role_id").(uuid.UUID) // MUST BE INJECTED BY AUTH MIDDLEWARE
+	roleID := userClaims.RoleID
 
 	if err := h.workflowService.RejectPurchase(r.Context(), purchaseID, userClaims.UserID, roleID, req.Comments); err != nil {
 		if strings.Contains(err.Error(), "403 Forbidden") {

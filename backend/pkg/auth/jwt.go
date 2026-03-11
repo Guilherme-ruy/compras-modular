@@ -10,9 +10,10 @@ import (
 )
 
 type Claims struct {
-	UserID   uuid.UUID `json:"user_id"`
-	RoleID   uuid.UUID `json:"role_id"`
-	RoleName string    `json:"role_name"`
+	UserID      uuid.UUID   `json:"user_id"`
+	RoleID      uuid.UUID   `json:"role_id"`
+	RoleName    string      `json:"role_name"`
+	Departments []uuid.UUID `json:"departments"`
 	jwt.RegisteredClaims
 }
 
@@ -24,13 +25,14 @@ var getJWTSecret = func() []byte {
 	return []byte(secret)
 }
 
-func GenerateToken(userID uuid.UUID, roleID uuid.UUID, roleName string) (string, error) {
+func GenerateToken(userID uuid.UUID, roleID uuid.UUID, roleName string, departments []uuid.UUID) (string, error) {
 	expirationTime := time.Now().Add(24 * time.Hour)
 
 	claims := &Claims{
-		UserID:   userID,
-		RoleID:   roleID,
-		RoleName: roleName,
+		UserID:      userID,
+		RoleID:      roleID,
+		RoleName:    roleName,
+		Departments: departments,
 		RegisteredClaims: jwt.RegisteredClaims{
 			ExpiresAt: jwt.NewNumericDate(expirationTime),
 			IssuedAt:  jwt.NewNumericDate(time.Now()),

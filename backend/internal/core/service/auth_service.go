@@ -7,6 +7,7 @@ import (
 	"compras-modular/backend/internal/core/domain"
 	"compras-modular/backend/pkg/auth"
 
+	"github.com/google/uuid"
 	"golang.org/x/crypto/bcrypt"
 )
 
@@ -46,7 +47,12 @@ func (s *authService) Login(ctx context.Context, email, password string) (string
 		return "", nil, errors.New("failed to retrieve user role")
 	}
 
-	token, err := auth.GenerateToken(user.ID, role.ID, role.Name)
+	var deptIDs []uuid.UUID
+	for _, dept := range user.Departments {
+		deptIDs = append(deptIDs, dept.ID)
+	}
+
+	token, err := auth.GenerateToken(user.ID, role.ID, role.Name, deptIDs)
 	if err != nil {
 		return "", nil, err
 	}

@@ -21,13 +21,15 @@ type workflowService struct {
 	db           *gorm.DB
 	purchaseRepo domain.PurchaseRepository
 	workflowRepo domain.WorkflowRepository
+	userRepo     domain.UserRepository
 }
 
-func NewWorkflowService(db *gorm.DB, purchaseRepo domain.PurchaseRepository, workflowRepo domain.WorkflowRepository) WorkflowService {
+func NewWorkflowService(db *gorm.DB, purchaseRepo domain.PurchaseRepository, workflowRepo domain.WorkflowRepository, userRepo domain.UserRepository) WorkflowService {
 	return &workflowService{
 		db:           db,
 		purchaseRepo: purchaseRepo,
 		workflowRepo: workflowRepo,
+		userRepo:     userRepo,
 	}
 }
 
@@ -77,6 +79,11 @@ func (s *workflowService) ApprovePurchase(ctx context.Context, purchaseID, userI
 	// VALIDACAO CRITICA
 	if !s.isUserAuthorizedForStep(step, userID, roleID) {
 		return errors.New("403 Forbidden: you are not authorized to approve this step")
+	}
+
+	// VALIDACAO CROSS-DEPARTMENT (View-only for others)
+	if !s.userHasDepartment(ctx, userID, purchase.DepartmentID) {
+		return errors.New("403 Forbidden: you can only approve purchases from your assigned departments")
 	}
 
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
@@ -143,6 +150,11 @@ func (s *workflowService) RejectPurchase(ctx context.Context, purchaseID, userID
 		return errors.New("403 Forbidden: you are not authorized to reject this step")
 	}
 
+	// VALIDACAO CROSS-DEPARTMENT (View-only for others)
+	if !s.userHasDepartment(ctx, userID, purchase.DepartmentID) {
+		return errors.New("403 Forbidden: you can only reject purchases from your assigned departments")
+	}
+
 	return s.db.WithContext(ctx).Transaction(func(tx *gorm.DB) error {
 		// Create Log
 		log := &models.PurchaseApproval{
@@ -176,5 +188,21 @@ func (s *workflowService) isUserAuthorizedForStep(step *models.WorkflowStep, use
 		}
 	}
 
+	return false
+}
+
+func (s *workflowService) userHasDepartment(ctx context.Context, userID uuid.UUID, targetDeptID uuid.UUID) bool {
+	// Superadmins bypass this or we rely strictly on the struct if they are approvers.
+	// But let's assume if it reached here, they MUST belong to the department.
+	user, err := s.userRepo.FindByID(ctx, userID)
+	if err != nil {
+		return false
+	}
+
+	for _, dept := range user.Departments {
+		if dept.ID == targetDeptID {
+			return true
+		}
+	}
 	return false
 }

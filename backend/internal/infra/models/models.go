@@ -28,12 +28,14 @@ type Role struct {
 
 type User struct {
 	ID           uuid.UUID  `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
-	DepartmentID *uuid.UUID `gorm:"type:uuid" json:"department_id"`
 	RoleID       uuid.UUID  `gorm:"type:uuid;not null" json:"role_id"`
 	Name         string     `gorm:"size:255;not null" json:"name"`
 	Email        string     `gorm:"size:255;not null;unique" json:"email"`
 	PasswordHash string     `gorm:"size:255;not null" json:"-"`
 	IsActive     bool       `gorm:"default:true" json:"is_active"`
+	
+	Departments  []Department `gorm:"many2many:user_departments;" json:"departments,omitempty"`
+	Role         *Role        `gorm:"foreignKey:RoleID" json:"role,omitempty"`
 }
 
 type Purchase struct {

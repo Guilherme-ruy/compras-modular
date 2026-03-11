@@ -1,11 +1,18 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, ShoppingCart, Settings } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, Settings, Users, Building2 } from 'lucide-react';
 import { cn } from '../../utils/cn';
+import { useAuth } from '../../contexts/AuthContext';
 
 export function Sidebar() {
+    const { user } = useAuth();
+    
     const routes = [
         { path: '/app', icon: LayoutDashboard, label: 'Dashboard' },
         { path: '/app/purchases', icon: ShoppingCart, label: 'Pedidos' },
+        ...(user?.roleName === 'SUPERADMIN' ? [
+            { path: '/app/users', icon: Users, label: 'Usuários' },
+            { path: '/app/departments', icon: Building2, label: 'Departamentos' }
+        ] : []),
         { path: '/app/settings', icon: Settings, label: 'Configurações' },
     ];
 

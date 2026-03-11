@@ -52,7 +52,7 @@ export function PurchaseList() {
                     <p className="text-slate-500 text-sm mt-1">Gerencie e acompanhe as requisições de compra</p>
                 </div>
                 <button
-                    onClick={() => { }}
+                    onClick={() => navigate('/app/purchases/new')}
                     className="flex items-center gap-2 bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 rounded-md transition-colors shadow-sm"
                 >
                     <Plus className="w-4 h-4" />

@@ -34,3 +34,9 @@ func (r *roleRepository) FindByName(ctx context.Context, name string) (*models.R
 	}
 	return &role, nil
 }
+
+func (r *roleRepository) FindAll(ctx context.Context) ([]models.Role, error) {
+	var roles []models.Role
+	err := r.db.WithContext(ctx).Find(&roles).Error
+	return roles, err
+}

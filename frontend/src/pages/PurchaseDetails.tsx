@@ -1,7 +1,8 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Check, X } from 'lucide-react';
+import { ArrowLeft, Check, X, ShieldAlert } from 'lucide-react';
 import api from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 
 type PurchaseItem = {
     id: string;
@@ -15,17 +16,24 @@ type Purchase = {
     total_amount: number;
     status: string;
     current_step_id: string | null;
+    department_id: string;
     metadata: Record<string, any>;
 };
 
 type PurchaseResponse = {
     purchase: Purchase;
     items: PurchaseItem[];
+    step_info?: {
+        step_order: number;
+        approver_role?: string;
+        approver_name?: string;
+    };
 };
 
 export function PurchaseDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const { user } = useAuth();
     const [data, setData] = useState<PurchaseResponse | null>(null);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
@@ -77,6 +85,9 @@ export function PurchaseDetails() {
     // Simple layout variables
     const isDraft = purchase.status === "DRAFT";
     const isPending = purchase.status === "PENDING_APPROVAL";
+
+    // Cross-Department Check
+    const hasDepartmentPermission = user?.departments?.includes(purchase.department_id);
 
     return (
         <div className="space-y-6">
@@ -159,6 +170,15 @@ export function PurchaseDetails() {
                         </div>
 
                         <div className="mt-6 space-y-3">
+                            {isPending && data.step_info && (
+                                <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-md">
+                                    <p className="text-xs text-amber-800 font-medium uppercase mb-1">Aguardando Aprovação (Passo {data.step_info.step_order})</p>
+                                    <p className="text-sm text-amber-900">
+                                        Requerido: <strong>{data.step_info.approver_name || data.step_info.approver_role || 'Aprovador Autorizado'}</strong>
+                                    </p>
+                                </div>
+                            )}
+
                             {isDraft && (
                                 <button
                                     onClick={() => handleAction('submit')}
@@ -184,22 +204,29 @@ export function PurchaseDetails() {
 
                                     {/* Note: Ideally we conditionally render based on RBAC but the backend will reject if unauthorized. 
                       Since we don't have step logic fetched on frontend, we render if pending. */}
-                                    <div className="flex gap-2">
-                                        <button
-                                            onClick={() => handleAction('approve')}
-                                            disabled={actionLoading}
-                                            className="flex-1 flex justify-center items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 rounded-md transition-colors disabled:opacity-50"
-                                        >
-                                            <Check className="w-4 h-4" /> Aprovar
-                                        </button>
-                                        <button
-                                            onClick={() => handleAction('reject')}
-                                            disabled={actionLoading}
-                                            className="flex-1 flex justify-center items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-medium py-2 rounded-md transition-colors disabled:opacity-50"
-                                        >
-                                            <X className="w-4 h-4" /> Rejeitar
-                                        </button>
-                                    </div>
+                                    {hasDepartmentPermission ? (
+                                        <div className="flex gap-2">
+                                            <button
+                                                onClick={() => handleAction('approve')}
+                                                disabled={actionLoading}
+                                                className="flex-1 flex justify-center items-center gap-2 bg-emerald-600 hover:bg-emerald-700 text-white font-medium py-2 rounded-md transition-colors disabled:opacity-50"
+                                            >
+                                                <Check className="w-4 h-4" /> Aprovar
+                                            </button>
+                                            <button
+                                                onClick={() => handleAction('reject')}
+                                                disabled={actionLoading}
+                                                className="flex-1 flex justify-center items-center gap-2 bg-red-600 hover:bg-red-700 text-white font-medium py-2 rounded-md transition-colors disabled:opacity-50"
+                                            >
+                                                <X className="w-4 h-4" /> Rejeitar
+                                            </button>
+                                        </div>
+                                    ) : (
+                                        <div className="flex items-center gap-2 p-3 bg-slate-50 border border-slate-200 rounded-md text-slate-500 text-sm">
+                                            <ShieldAlert className="w-5 h-5 text-slate-400" />
+                                            Você não possui permissão para aprovar neste departamento.
+                                        </div>
+                                    )}
                                 </>
                             )}
                         </div>

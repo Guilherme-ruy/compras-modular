@@ -4,6 +4,7 @@ import type { ReactNode } from 'react';
 type UserContextData = {
     userId: string;
     roleName: string;
+    departments: string[];
 };
 
 type AuthContextType = {
@@ -41,7 +42,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (decoded) {
                 setUser({
                     userId: decoded.user_id,
-                    roleName: decoded.role_name
+                    roleName: decoded.role_name,
+                    departments: decoded.departments || []
                 });
             }
         } else {

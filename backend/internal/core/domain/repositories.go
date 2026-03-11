@@ -11,17 +11,25 @@ import (
 type UserRepository interface {
 	FindByEmail(ctx context.Context, email string) (*models.User, error)
 	FindByID(ctx context.Context, id uuid.UUID) (*models.User, error)
+	FindAll(ctx context.Context) ([]models.User, error)
 	Create(ctx context.Context, user *models.User) error
 }
 
 type RoleRepository interface {
 	FindByID(ctx context.Context, id uuid.UUID) (*models.Role, error)
 	FindByName(ctx context.Context, name string) (*models.Role, error)
+	FindAll(ctx context.Context) ([]models.Role, error)
 }
 
 type SystemSettingsRepository interface {
 	GetSettings(ctx context.Context) (*models.SystemSettings, error)
 	UpdateSettings(ctx context.Context, settings *models.SystemSettings) error
+}
+
+type DepartmentRepository interface {
+	FindAll(ctx context.Context) ([]models.Department, error)
+	FindByID(ctx context.Context, id uuid.UUID) (*models.Department, error)
+	Create(ctx context.Context, dept *models.Department) error
 }
 
 type PurchaseRepository interface {
