@@ -1,20 +1,20 @@
 import { useSuspenseQuery } from '@tanstack/react-query';
-import { 
-    DollarSign, 
-    AlertCircle, 
-    ShoppingCart, 
+import {
+    DollarSign,
+    AlertCircle,
+    ShoppingCart,
     XCircle,
     ArrowRight
 } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
-import { 
-    BarChart, 
-    Bar, 
-    XAxis, 
-    YAxis, 
-    CartesianGrid, 
-    Tooltip, 
-    ResponsiveContainer 
+import {
+    BarChart,
+    Bar,
+    XAxis,
+    YAxis,
+    CartesianGrid,
+    Tooltip,
+    ResponsiveContainer
 } from 'recharts';
 
 import { dashboardApi } from '../api/dashboardApi';
@@ -25,7 +25,7 @@ const fetchDashboardData = async () => {
     const metrics = await dashboardApi.getMetrics();
     // Fetch last 5 pending approvals
     const purchasesRes = await api.get('/purchases');
-    
+
     // Naively filter for now since backend filtering might require query params we don't know
     const allPurchases = purchasesRes.data || [];
     const pendingPurchases = allPurchases
@@ -60,9 +60,9 @@ export default function Dashboard() {
 
             {/* Z-PATTERN TOP: FAST METRICS */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-                
+
                 {/* 1. Pendentes (Foco Principal do Usuário) */}
-                <div 
+                <div
                     onClick={() => navigate('/app/purchases')}
                     className="bg-white rounded-xl shadow-sm border-2 border-brand-500 p-6 flex items-start gap-4 cursor-pointer hover:shadow-md transition-shadow relative overflow-hidden group"
                 >
@@ -126,17 +126,17 @@ export default function Dashboard() {
                         <h2 className="text-lg font-bold text-slate-800">Recentes para Aprovação</h2>
                         <p className="text-sm text-slate-500 mt-1">Pedidos que acabaram de entrar na fila.</p>
                     </div>
-                    <button 
+                    <button
                         onClick={() => navigate('/app/purchases')}
                         className="text-sm font-semibold text-brand-600 hover:text-brand-700 flex items-center gap-1 bg-brand-50 px-3 py-1.5 rounded-md"
                     >
                         Ver todos <ArrowRight className="w-4 h-4" />
                     </button>
                 </div>
-                
+
                 {pendingPurchases.length === 0 ? (
                     <div className="p-12 text-center text-slate-500 italic">
-                        Nenhum pedido aguardando aprovação no momento. Ótimo trabalho! 🎉
+                        Nenhum pedido aguardando aprovação no momento.
                     </div>
                 ) : (
                     <div className="overflow-x-auto">
@@ -150,8 +150,8 @@ export default function Dashboard() {
                             </thead>
                             <tbody className="divide-y divide-slate-100">
                                 {pendingPurchases.map((p: any) => (
-                                    <tr 
-                                        key={p.id} 
+                                    <tr
+                                        key={p.id}
                                         className="hover:bg-slate-50 cursor-pointer transition-colors"
                                         onClick={() => navigate(`/app/purchases/${p.id}`)}
                                     >
@@ -173,7 +173,7 @@ export default function Dashboard() {
             {/* Z-PATTERN FOOTER: ANALYTICS GRAPH */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-6">
                 <h2 className="text-lg font-bold text-slate-800 mb-6">Orçamento Gasto por Departamento</h2>
-                
+
                 <div className="h-80 w-full">
                     {metrics.spend_by_department.length === 0 ? (
                         <div className="w-full h-full flex items-center justify-center text-slate-400 italic bg-slate-50 rounded-lg">
@@ -183,28 +183,28 @@ export default function Dashboard() {
                         <ResponsiveContainer width="100%" height="100%">
                             <BarChart data={metrics.spend_by_department} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
                                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#E2E8F0" />
-                                <XAxis 
-                                    dataKey="department_name" 
-                                    axisLine={false} 
-                                    tickLine={false} 
-                                    tick={{ fill: '#64748b', fontSize: 13 }} 
+                                <XAxis
+                                    dataKey="department_name"
+                                    axisLine={false}
+                                    tickLine={false}
+                                    tick={{ fill: '#64748b', fontSize: 13 }}
                                     dy={10}
                                 />
-                                <YAxis 
-                                    axisLine={false} 
-                                    tickLine={false} 
+                                <YAxis
+                                    axisLine={false}
+                                    tickLine={false}
                                     tick={{ fill: '#64748b', fontSize: 13 }}
                                     tickFormatter={(value) => `R$ ${value}`}
                                 />
-                                <Tooltip 
+                                <Tooltip
                                     cursor={{ fill: '#f8fafc' }}
                                     contentStyle={{ borderRadius: '8px', border: '1px solid #e2e8f0', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                                     formatter={(value: any) => [formatCurrency(value as number), 'Gasto Aprovado']}
                                 />
-                                <Bar 
-                                    dataKey="amount" 
-                                    fill="#10b981" 
-                                    radius={[4, 4, 0, 0]} 
+                                <Bar
+                                    dataKey="amount"
+                                    fill="#10b981"
+                                    radius={[4, 4, 0, 0]}
                                     barSize={60}
                                 />
                             </BarChart>
