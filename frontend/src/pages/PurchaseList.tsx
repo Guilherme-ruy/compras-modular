@@ -11,7 +11,7 @@ type Purchase = {
 
 export function PurchaseList() {
     const [purchases, setPurchases] = useState<Purchase[]>([]);
-    const [departments, setDepartments] = useState<{id: string, name: string}[]>([]);
+    const [departments, setDepartments] = useState<{ id: string, name: string }[]>([]);
     const [loading, setLoading] = useState(true);
     const [statusFilter, setStatusFilter] = useState('');
     const [deptFilter, setDeptFilter] = useState('');
@@ -40,7 +40,7 @@ export function PurchaseList() {
             const params = new URLSearchParams();
             if (statusFilter) params.append('status', statusFilter);
             if (deptFilter) params.append('dept_id', deptFilter);
-            
+
             const res = await api.get(`/purchases?${params.toString()}`);
             setPurchases(res.data || []);
         } catch (err) {
@@ -82,11 +82,6 @@ export function PurchaseList() {
 
             {/* FILTERS BAR - Refined & Premium Design */}
             <div className="bg-white rounded-xl shadow-sm border border-slate-200 p-5 space-y-4">
-                <div className="flex items-center gap-2 mb-2">
-                    <Filter className="w-4 h-4 text-brand-600" />
-                    <h2 className="text-sm font-bold text-slate-700 uppercase tracking-wider">Filtros de Pesquisa</h2>
-                </div>
-                
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 items-end">
                     <div className="space-y-1.5 group">
                         <label className="flex items-center gap-2 text-[11px] font-bold text-slate-400 uppercase tracking-widest pl-1 group-focus-within:text-brand-600 transition-colors">
@@ -94,7 +89,7 @@ export function PurchaseList() {
                             Status do Pedido
                         </label>
                         <div className="relative">
-                            <select 
+                            <select
                                 value={statusFilter}
                                 onChange={(e) => setStatusFilter(e.target.value)}
                                 className="block w-full rounded-lg border-slate-200 bg-slate-50/50 py-2.5 pl-3 pr-10 text-slate-700 font-medium shadow-sm transition-all focus:border-brand-500 focus:ring-brand-500 focus:bg-white sm:text-sm appearance-none cursor-pointer"
@@ -119,7 +114,7 @@ export function PurchaseList() {
                             Departamento
                         </label>
                         <div className="relative">
-                            <select 
+                            <select
                                 value={deptFilter}
                                 onChange={(e) => setDeptFilter(e.target.value)}
                                 className="block w-full rounded-lg border-slate-200 bg-slate-50/50 py-2.5 pl-3 pr-10 text-slate-700 font-medium shadow-sm transition-all focus:border-brand-500 focus:ring-brand-500 focus:bg-white sm:text-sm appearance-none cursor-pointer"
@@ -138,16 +133,16 @@ export function PurchaseList() {
                     </div>
 
                     <div className="flex items-center gap-3">
-                        <button 
+                        <button
                             onClick={fetchPurchases}
                             className="flex-1 flex items-center justify-center gap-2 bg-slate-800 hover:bg-slate-900 text-white px-4 py-2.5 rounded-lg text-sm font-semibold transition-all shadow-sm active:scale-95"
                         >
                             <Search className="w-4 h-4" />
                             Aplicar Filtros
                         </button>
-                        
+
                         {(statusFilter || deptFilter) && (
-                            <button 
+                            <button
                                 onClick={() => { setStatusFilter(''); setDeptFilter(''); }}
                                 className="flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-red-600 py-2.5 px-3 transition-colors rounded-lg hover:bg-red-50"
                                 title="Limpar Filtros"

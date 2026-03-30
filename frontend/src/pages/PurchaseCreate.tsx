@@ -14,7 +14,7 @@ export function PurchaseCreate() {
   const [loading, setLoading] = useState(false);
   const [items, setItems] = useState<Item[]>([{ description: '', quantity: 1, unit_price: 0 }]);
   const [justification, setJustification] = useState('');
-  
+
   const [departments, setDepartments] = useState<any[]>([]);
   const [selectedDepartment, setSelectedDepartment] = useState('');
 
@@ -52,7 +52,7 @@ export function PurchaseCreate() {
     try {
       setLoading(true);
       const totalAmount = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
-      
+
       const payload = {
         department_id: selectedDepartment,
         total_amount: totalAmount,
@@ -90,25 +90,25 @@ export function PurchaseCreate() {
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
           <h2 className="text-lg font-semibold text-slate-800 mb-4 border-b border-slate-100 pb-2">Informações Gerais</h2>
-          
+
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
             <div className="md:col-span-2">
-               <label className="block text-sm font-medium text-slate-700 mb-1">Centro de Custo / Departamento</label>
-               <select 
-                 required
-                 value={selectedDepartment}
-                 onChange={e => setSelectedDepartment(e.target.value)}
-                 className="w-full px-4 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all bg-white"
-               >
-                 <option value="" disabled>Selecione para onde vai essa compra...</option>
-                 {departments.map(dept => (
-                   <option key={dept.id} value={dept.id}>{dept.name}</option>
-                 ))}
-               </select>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Centro de Custo / Departamento</label>
+              <select
+                required
+                value={selectedDepartment}
+                onChange={e => setSelectedDepartment(e.target.value)}
+                className="w-full px-4 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all bg-white"
+              >
+                <option value="" disabled>Para onde vai essa compra?</option>
+                {departments.map(dept => (
+                  <option key={dept.id} value={dept.id}>{dept.name}</option>
+                ))}
+              </select>
             </div>
-            
+
             <div className="md:col-span-2">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Justificativa da Compra</label>
+              <label className="block text-sm font-medium text-slate-700 mb-1">Justificativa</label>
               <textarea
                 required
                 value={justification}
@@ -132,7 +132,7 @@ export function PurchaseCreate() {
               <Plus className="w-4 h-4" /> Adicionar Item
             </button>
           </div>
-          
+
           <div className="p-6 space-y-4">
             {items.map((item, index) => (
               <div key={index} className="flex gap-4 items-start">
@@ -179,7 +179,7 @@ export function PurchaseCreate() {
                 </button>
               </div>
             ))}
-            
+
             <div className="pt-4 mt-6 border-t border-slate-100 flex justify-end">
               <div className="text-right">
                 <p className="text-sm text-slate-500 font-medium">Total Estimado</p>
