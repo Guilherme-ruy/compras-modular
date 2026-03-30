@@ -14,6 +14,8 @@ import { lazy } from 'react';
 import { SuspenseLoader } from './components/ui/SuspenseLoader';
 import { WorkflowList } from './pages/WorkflowList';
 import { WorkflowEdit } from './pages/WorkflowEdit';
+import { SupplierList } from './pages/SupplierList';
+import { SupplierForm } from './pages/SupplierForm';
 
 // Lazy loaded features (Suspense compliance)
 const Dashboard = lazy(() => import('./features/dashboard/components/Dashboard'));
@@ -57,6 +59,9 @@ export default function App() {
               <Route path="workflows" element={<WorkflowList />} />
               <Route path="workflows/new" element={<WorkflowEdit />} />
               <Route path="workflows/:id/edit" element={<WorkflowEdit />} />
+              <Route path="suppliers" element={<SupplierList />} />
+              <Route path="suppliers/new" element={<SupplierForm />} />
+              <Route path="suppliers/:id/edit" element={<SupplierForm />} />
               <Route path="settings" element={
                 <SuspenseLoader>
                   <Settings />

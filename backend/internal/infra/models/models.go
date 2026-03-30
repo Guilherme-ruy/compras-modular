@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	"gorm.io/datatypes"
+	"gorm.io/gorm"
 )
 
 type SystemSettings struct {
@@ -78,4 +79,44 @@ type PurchaseApproval struct {
 	Action     string    `gorm:"size:50;not null" json:"action"` // APPROVED, REJECTED
 	Comments   string    `gorm:"type:text" json:"comments"`
 	ActedAt    time.Time `gorm:"autoCreateTime" json:"acted_at"`
+}
+
+type Supplier struct {
+	ID        uuid.UUID `gorm:"type:uuid;primaryKey;default:uuid_generate_v4()" json:"id"`
+	
+	// Seção 1
+	CompanyName  string `gorm:"size:255;not null" json:"company_name"`
+	TradeName    string `gorm:"size:255" json:"trade_name"`
+	CNPJ         string `gorm:"size:20;not null;unique" json:"cnpj"`
+	StateReg     string `gorm:"size:50" json:"state_reg"`
+	IsActive     bool   `gorm:"default:true" json:"is_active"`
+	
+	// Seção 2 
+	ContactName  string `gorm:"size:255" json:"contact_name"`
+	Phone        string `gorm:"size:20" json:"phone"`
+	Email        string `gorm:"size:255" json:"email"`
+	ComContact   string `gorm:"size:255" json:"com_contact"`
+	FinContact   string `gorm:"size:255" json:"fin_contact"`
+	
+	// Seção 3
+	ZipCode      string `gorm:"size:10" json:"zip_code"`
+	Street       string `gorm:"size:255" json:"street"`
+	Number       string `gorm:"size:20" json:"number"`
+	Neighborhood string `gorm:"size:255" json:"neighborhood"`
+	City         string `gorm:"size:255" json:"city"`
+	State        string `gorm:"size:2" json:"state"`
+	
+	// Seção 4
+	Bank         string `gorm:"size:255" json:"bank"`
+	Agency       string `gorm:"size:50" json:"agency"`
+	Account      string `gorm:"size:50" json:"account"`
+	Pix          string `gorm:"size:255" json:"pix"`
+	
+	// Seção 5
+	Notes        string         `gorm:"type:text" json:"notes"`
+	Attachments  datatypes.JSON `gorm:"type:jsonb" json:"attachments"`
+	
+	CreatedAt    time.Time      `gorm:"autoCreateTime" json:"created_at"`
+	UpdatedAt    time.Time      `gorm:"autoUpdateTime" json:"updated_at"`
+	DeletedAt    gorm.DeletedAt `gorm:"index" json:"-"`
 }

@@ -30,6 +30,7 @@ func main() {
 	purchaseRepo := repository.NewPurchaseRepository(database.DB)
 	workflowRepo := repository.NewWorkflowRepository(database.DB)
 	deptRepo := repository.NewDepartmentRepository(database.DB)
+	supplierRepo := repository.NewSupplierRepository(database.DB)
 
 	// 3. Setup Services
 	authSvc := service.NewAuthService(userRepo, roleRepo)
@@ -41,6 +42,7 @@ func main() {
 	roleSvc := service.NewRoleService(roleRepo)
 	workflowMgmtSvc := service.NewWorkflowManagementService(workflowRepo)
 	dashboardSvc := service.NewDashboardService(database.DB, userRepo)
+	supplierSvc := service.NewSupplierService(supplierRepo)
 
 	// 4. Setup Handlers
 	authHandler := handlers.NewAuthHandler(authSvc)
@@ -52,6 +54,7 @@ func main() {
 	roleHandler := handlers.NewRoleHandler(roleSvc)
 	workflowMgmtHandler := handlers.NewWorkflowManagementHandler(workflowMgmtSvc)
 	dashboardHandler := handlers.NewDashboardHandler(dashboardSvc)
+	supplierHandler := handlers.NewSupplierHandler(supplierSvc)
 
 	// 5. Setup Router
 	r := chi.NewRouter()
@@ -61,7 +64,7 @@ func main() {
 	r.Use(middleware.Recoverer)
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins:   []string{"http://localhost:5173", "http://localhost:3000"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowedMethods:   []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
 		ExposedHeaders:   []string{"Link"},
 		AllowCredentials: true,
@@ -91,6 +94,14 @@ func main() {
 			r.Post("/purchases/{id}/submit", workflowHandler.Submit)
 			r.Post("/purchases/{id}/approve", workflowHandler.Approve)
 			r.Post("/purchases/{id}/reject", workflowHandler.Reject)
+
+			// Suppliers
+			r.Get("/suppliers", supplierHandler.List)
+			r.Get("/suppliers/{id}", supplierHandler.Get)
+			r.Post("/suppliers", supplierHandler.Create)
+			r.Put("/suppliers/{id}", supplierHandler.Update)
+			r.Patch("/suppliers/{id}/toggle-active", supplierHandler.ToggleActive)
+			r.Delete("/suppliers/{id}", supplierHandler.Delete)
 		})
 
 		// Admin routes (SUPERADMIN)

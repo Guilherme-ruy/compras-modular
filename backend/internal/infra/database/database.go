@@ -64,6 +64,7 @@ func AutoMigrate() {
 		&models.ApprovalWorkflow{},
 		&models.WorkflowStep{},
 		&models.PurchaseApproval{},
+		&models.Supplier{},
 	)
 	if err != nil {
 		log.Fatalf("Failed to auto-migrate database: %v", err)

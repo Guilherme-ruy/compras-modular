@@ -55,3 +55,11 @@ type WorkflowRepository interface {
 	DeleteWorkflow(ctx context.Context, workflowID uuid.UUID) error
 	ReplaceSteps(ctx context.Context, workflowID uuid.UUID, newSteps []models.WorkflowStep) error
 }
+
+type SupplierRepository interface {
+	FindAll(ctx context.Context, search string, status string) ([]models.Supplier, error)
+	FindByID(ctx context.Context, id uuid.UUID) (*models.Supplier, error)
+	Create(ctx context.Context, supplier *models.Supplier) error
+	Update(ctx context.Context, supplier *models.Supplier) error
+	Delete(ctx context.Context, id uuid.UUID) error
+}
