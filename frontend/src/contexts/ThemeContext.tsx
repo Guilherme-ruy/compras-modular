@@ -2,33 +2,21 @@ import { createContext, useContext, useEffect, useState } from 'react';
 import type { ReactNode } from 'react';
 import axios from 'axios';
 
-type ThemeConfigType = {
-    primary: {
-        50: string;
-        100: string;
-        200: string;
-        300: string;
-        400: string;
-        500: string;
-        600: string;
-        700: string;
-        800: string;
-        900: string;
-    };
-};
-
 type ThemeContextType = {
     isLoading: boolean;
+    companyName: string;
     applyTheme: (colors: Record<string, string>) => void;
 };
 
 const ThemeContext = createContext<ThemeContextType>({ 
     isLoading: true,
+    companyName: 'Compras Modular',
     applyTheme: () => {} 
 });
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
     const [isLoading, setIsLoading] = useState(true);
+    const [companyName, setCompanyName] = useState('Compras Modular');
 
     useEffect(() => {
         const fetchTheme = async () => {
@@ -37,8 +25,11 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
                 const response = await axios.get<any>(`${baseURL}/settings/theme`);
 
                 if (response.data) {
-                    // Handle both { primary: { ...colors } } and flat { ...colors }
-                    const colors = response.data.primary || response.data;
+                    if (response.data.companyName) {
+                        setCompanyName(response.data.companyName);
+                    }
+
+                    const colors = response.data.themeConfig;
                     if (colors && typeof colors === 'object' && Object.keys(colors).length > 0) {
                         applyThemeColors(colors);
                     }
@@ -63,9 +54,7 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
     };
 
     return (
-        <ThemeContext.Provider value={{ isLoading, applyTheme: applyThemeColors }}>
-            {/* Block rendering until theme arrives to avoid flash of unstyled content if we want,
-          or just let fallback handle it. We will use fallback for simplicity. */}
+        <ThemeContext.Provider value={{ isLoading, companyName, applyTheme: applyThemeColors }}>
             {children}
         </ThemeContext.Provider>
     );

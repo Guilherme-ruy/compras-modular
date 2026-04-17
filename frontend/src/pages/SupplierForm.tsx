@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { ArrowLeft, Building2, MapPin, DollarSign, Contact, Info, AlertCircle, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import api from '../services/api';
+import { SupplierStatus, SupplierStatusLabels } from '../constants/suppliers';
 
 export function SupplierForm() {
   const navigate = useNavigate();
@@ -24,23 +25,23 @@ export function SupplierForm() {
     { id: 'gerais', label: 'Dados Gerais', icon: Building2 },
     { id: 'contatos', label: 'Contatos', icon: Contact },
     { id: 'endereco', label: 'Endereço', icon: MapPin },
-    { id: 'financeiro', label: 'Financeiro', icon: DollarSign },
+    { id: 'financeiro', label: 'Dados bancários', icon: DollarSign },
     { id: 'extras', label: 'Extras', icon: Info },
   ];
   const [formData, setFormData] = useState({
-    company_name: '',
-    trade_name: '',
+    companyName: '',
+    tradeName: '',
     cnpj: '',
-    state_reg: '',
-    is_active: true,
+    stateReg: '',
+    status: SupplierStatus.ACTIVE,
 
-    contact_name: '',
+    contactName: '',
     phone: '',
     email: '',
-    com_contact: '',
-    fin_contact: '',
+    comContact: '',
+    finContact: '',
 
-    zip_code: '',
+    zipCode: '',
     street: '',
     number: '',
     neighborhood: '',
@@ -53,6 +54,8 @@ export function SupplierForm() {
     pix: '',
 
     notes: '',
+    createdAt: '',
+    updatedAt: '',
   });
 
   useEffect(() => {
@@ -91,7 +94,7 @@ export function SupplierForm() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (!formData.company_name || !formData.cnpj) {
+    if (!formData.companyName || !formData.cnpj) {
       showToast('A Razão Social e o CNPJ são obrigatórios.', 'warning');
       setActiveTab('gerais');
       return;
@@ -99,14 +102,35 @@ export function SupplierForm() {
 
     setLoading(true);
 
-    const payload = { ...formData, cnpj: formData.cnpj.replace(/\D/g, '') };
+    const cleanPayload = {
+      companyName: formData.companyName,
+      tradeName: formData.tradeName,
+      cnpj: formData.cnpj.replace(/\D/g, ''),
+      stateReg: formData.stateReg,
+      contactName: formData.contactName,
+      phone: formData.phone,
+      email: formData.email,
+      comContact: formData.comContact,
+      finContact: formData.finContact,
+      zipCode: formData.zipCode,
+      street: formData.street,
+      number: formData.number,
+      neighborhood: formData.neighborhood,
+      city: formData.city,
+      state: formData.state,
+      bank: formData.bank,
+      agency: formData.agency,
+      account: formData.account,
+      pix: formData.pix,
+      notes: formData.notes
+    };
 
     try {
       if (isEditing) {
-        await api.put(`/suppliers/${id}`, payload);
+        await api.put(`/suppliers/${id}`, cleanPayload);
         showToast('Fornecedor atualizado com sucesso!', 'success');
       } else {
-        await api.post('/suppliers', payload);
+        await api.post('/suppliers', cleanPayload);
         showToast('Fornecedor cadastrado com sucesso!', 'success');
       }
       setTimeout(() => navigate('/app/suppliers'), 1500);
@@ -121,13 +145,11 @@ export function SupplierForm() {
     <div className="space-y-6 max-w-4xl mx-auto pb-10">
       {/* TOAST FLUTUANTE */}
       {toast.show && (
-        <div className={`fixed bottom-6 right-6 flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl z-50 animate-in slide-in-from-bottom-5 fade-in duration-300 text-white font-medium ${
-          toast.type === 'error' ? 'bg-red-600' : toast.type === 'warning' ? 'bg-amber-500' : 'bg-emerald-600'
-        }`}>
+        <div className={`fixed bottom-6 right-6 flex items-center gap-3 px-6 py-4 rounded-xl shadow-2xl z-50 animate-in slide-in-from-bottom-5 fade-in duration-300 text-white font-medium ${toast.type === 'error' ? 'bg-red-600' : toast.type === 'warning' ? 'bg-amber-500' : 'bg-emerald-600'
+          }`}>
           {toast.type === 'error' && <AlertCircle className="w-5 h-5" />}
           {toast.type === 'warning' && <AlertTriangle className="w-5 h-5" />}
-          {toast.type === 'success' && <CheckCircle2 className="w-5 h-5" />}
-          {toast.message}
+          {typeof toast.message === 'object' ? JSON.stringify(toast.message) : String(toast.message)}
         </div>
       )}
 
@@ -153,8 +175,8 @@ export function SupplierForm() {
             type="button"
             onClick={() => setActiveTab(tab.id)}
             className={`flex items-center gap-2 px-4 py-2.5 rounded-md text-sm font-semibold transition-all whitespace-nowrap flex-1 justify-center ${activeTab === tab.id
-                ? 'bg-brand-50 text-brand-700 shadow-sm ring-1 ring-brand-200'
-                : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
+              ? 'bg-brand-50 text-brand-700 shadow-sm ring-1 ring-brand-200'
+              : 'text-slate-500 hover:text-slate-700 hover:bg-slate-50'
               }`}
           >
             <tab.icon className="w-4 h-4" />
@@ -176,8 +198,8 @@ export function SupplierForm() {
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-slate-700 mb-1">Razão Social *</label>
                 <input
-                  name="company_name"
-                  value={formData.company_name}
+                  name="companyName"
+                  value={formData.companyName}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-brand-500 focus:border-brand-500 outline-none"
                 />
@@ -185,8 +207,8 @@ export function SupplierForm() {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Nome Fantasia</label>
                 <input
-                  name="trade_name"
-                  value={formData.trade_name}
+                  name="tradeName"
+                  value={formData.tradeName}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-brand-500 focus:border-brand-500 outline-none"
                 />
@@ -204,23 +226,24 @@ export function SupplierForm() {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Inscrição Estadual</label>
                 <input
-                  name="state_reg"
-                  value={formData.state_reg}
+                  name="stateReg"
+                  value={formData.stateReg}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-brand-500 focus:border-brand-500 outline-none"
                 />
               </div>
-              <div className="flex items-center pt-6">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    name="is_active"
-                    checked={formData.is_active}
-                    onChange={handleChange}
-                    className="w-4 h-4 text-brand-600 border-slate-300 rounded focus:ring-brand-500"
-                  />
-                  <span className="text-sm font-medium text-slate-700">Fornecedor Ativo</span>
-                </label>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Status</label>
+                <select
+                  name="status"
+                  value={formData.status}
+                  onChange={handleChange}
+                  className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-brand-500 focus:border-brand-500 outline-none bg-white font-medium"
+                >
+                  {Object.entries(SupplierStatusLabels).map(([val, label]) => (
+                    <option key={val} value={val}>{label}</option>
+                  ))}
+                </select>
               </div>
             </div>
           </div>
@@ -237,8 +260,8 @@ export function SupplierForm() {
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-slate-700 mb-1">Responsável Principal</label>
                 <input
-                  name="contact_name"
-                  value={formData.contact_name}
+                  name="contactName"
+                  value={formData.contactName}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-brand-500 focus:border-brand-500 outline-none"
                 />
@@ -265,8 +288,8 @@ export function SupplierForm() {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Contato Comercial</label>
                 <input
-                  name="com_contact"
-                  value={formData.com_contact}
+                  name="comContact"
+                  value={formData.comContact}
                   onChange={handleChange}
                   placeholder="Nome / Fone Comercial"
                   className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-brand-500 focus:border-brand-500 outline-none"
@@ -275,8 +298,8 @@ export function SupplierForm() {
               <div>
                 <label className="block text-sm font-medium text-slate-700 mb-1">Contato Financeiro</label>
                 <input
-                  name="fin_contact"
-                  value={formData.fin_contact}
+                  name="finContact"
+                  value={formData.finContact}
                   onChange={handleChange}
                   placeholder="Nome / Fone Financeiro"
                   className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-brand-500 focus:border-brand-500 outline-none"
@@ -297,8 +320,8 @@ export function SupplierForm() {
               <div className="md:col-span-2">
                 <label className="block text-sm font-medium text-slate-700 mb-1">CEP</label>
                 <input
-                  name="zip_code"
-                  value={formData.zip_code}
+                  name="zipCode"
+                  value={formData.zipCode}
                   onChange={handleChange}
                   className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-brand-500 focus:border-brand-500 outline-none font-mono"
                 />
@@ -420,6 +443,26 @@ export function SupplierForm() {
                 className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-brand-500 focus:border-brand-500 outline-none resize-y"
               />
             </div>
+            {isEditing && (
+              <div className="p-6 pt-0 grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Data de Cadastro</label>
+                  <input
+                    readOnly
+                    value={formData.createdAt ? new Date(formData.createdAt).toLocaleString('pt-BR') : ''}
+                    className="w-full px-3 py-2 border border-slate-200 bg-slate-50 text-slate-500 rounded-md outline-none cursor-not-allowed"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">Última Atualização</label>
+                  <input
+                    readOnly
+                    value={formData.updatedAt ? new Date(formData.updatedAt).toLocaleString('pt-BR') : ''}
+                    className="w-full px-3 py-2 border border-slate-200 bg-slate-50 text-slate-500 rounded-md outline-none cursor-not-allowed"
+                  />
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -437,8 +480,8 @@ export function SupplierForm() {
             disabled={loading}
             className="px-8 py-2.5 text-sm font-medium text-white bg-brand-600 hover:bg-brand-700 rounded-md transition-colors shadow-sm disabled:opacity-50 flex items-center gap-2"
           >
-            {loading 
-              ? (toast.show && toast.type === 'success' ? 'Redirecionando...' : 'Salvando...') 
+            {loading
+              ? (toast.show && toast.type === 'success' ? 'Redirecionando...' : 'Salvando...')
               : (isEditing ? 'Salvar Alterações' : 'Cadastrar Fornecedor')}
           </button>
         </div>

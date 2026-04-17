@@ -1,43 +1,51 @@
-version: '3.8'
-
 services:
+  # ── PostgreSQL ──────────────────────────────────────────
   db:
-    image: postgres:15-alpine
-    container_name: compras_modular_db
+    image: postgres:16-alpine
+    container_name: compras_db
     environment:
-      - POSTGRES_USER=compras_user
-      - POSTGRES_PASSWORD=compras_password
-      - POSTGRES_DB=compras_db
+      POSTGRES_USER: compras_user
+      POSTGRES_PASSWORD: compras_password
+      POSTGRES_DB: compras_db
     ports:
       - "5433:5432"
     volumes:
       - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U compras_user -d compras_db"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
     restart: unless-stopped
 
+  # ── NestJS Backend ──────────────────────────────────────
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
-    container_name: compras_modular_backend
+    container_name: compras_backend
     ports:
-      - "8080:8080"
-    env_file:
-      - ./backend/.env
+      - "3000:3000"
     environment:
-      - DB_HOST=db # Sobrescreve o DB_HOST do .env para usar o container do banco
+      DATABASE_URL: postgresql://compras_user:compras_password@db:5432/compras_db
+      JWT_SECRET: compras_super_secret_key_2026
+      PORT: 3000
+      NODE_ENV: production
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     restart: unless-stopped
 
+  # ── React Frontend (Nginx) ──────────────────────────────
   frontend:
     build:
       context: ./frontend
       dockerfile: Dockerfile
-    container_name: compras_modular_frontend
+      args:
+        VITE_API_URL: http://localhost:3000/api/v1
+    container_name: compras_frontend
     ports:
-      - "5173:5173"
-    env_file:
-      - ./frontend/.env
+      - "5173:80"
     depends_on:
       - backend
     restart: unless-stopped

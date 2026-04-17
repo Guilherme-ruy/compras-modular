@@ -171,9 +171,9 @@ export const PRESET_COLORS: ColorPreset[] = [
 
 export interface SystemSettings {
     id: number;
-    company_name: string;
+    companyName: string;
     document: string;
-    theme_config: ThemeColors;
+    themeConfig: ThemeColors;
 }
 
 export interface UserProfileUpdate {

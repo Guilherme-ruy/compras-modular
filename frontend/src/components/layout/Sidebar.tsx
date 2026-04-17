@@ -10,7 +10,7 @@ export function Sidebar() {
         { path: '/app/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
         { path: '/app/purchases', icon: ShoppingCart, label: 'Pedidos' },
         { path: '/app/suppliers', icon: Store, label: 'Fornecedores' },
-        ...(user?.roleName === 'SUPERADMIN' ? [
+        ...(['SUPERADMIN', 'ADMIN'].includes(user?.roleName ?? '') ? [
             { path: '/app/workflows', icon: GitMerge, label: 'Fluxos (Regras)' },
             { path: '/app/users', icon: Users, label: 'Usuários Interno' },
             { path: '/app/departments', icon: Building2, label: 'Departamentos' }

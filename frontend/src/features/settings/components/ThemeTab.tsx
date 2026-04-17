@@ -16,8 +16,9 @@ export default function ThemeTab({ initialColors }: { initialColors?: ThemeColor
     const [isSaving, setIsSaving] = useState(false);
     const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
 
-    // Only SUPERADMIN can see this tab (safeguard)
-    if (user?.roleName !== 'SUPERADMIN') {
+    // Only SUPERADMIN/ADMIN can see this tab (safeguard)
+    const isAdmin = user?.roleName === 'SUPERADMIN' || user?.roleName === 'ADMIN';
+    if (!isAdmin) {
         return (
             <div className="p-8 text-center text-slate-500">
                 Você não tem permissão para alterar as configurações do sistema.
@@ -35,12 +36,16 @@ export default function ThemeTab({ initialColors }: { initialColors?: ThemeColor
 
             // Save to Backend
             await settingsApi.updateSystemSettings({
-                theme_config: preset.colors
+                themeConfig: preset.colors
             });
             
             setMessage({ type: 'success', text: 'Tema alterado com sucesso! Todo o sistema agora usará esta cor.' });
         } catch (err: any) {
-            setMessage({ type: 'error', text: err.response?.data || 'Erro ao salvar tema.' });
+            const errorData = err.response?.data;
+            const errorText = typeof errorData === 'object' 
+                ? (errorData.message || JSON.stringify(errorData)) 
+                : (errorData || 'Erro ao salvar tema.');
+            setMessage({ type: 'error', text: errorText });
         } finally {
             setIsSaving(false);
         }

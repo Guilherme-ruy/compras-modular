@@ -1,4 +1,5 @@
-import { Component, ErrorInfo, ReactNode } from 'react';
+import { Component } from 'react';
+import type { ErrorInfo, ReactNode } from 'react';
 import { AlertCircle } from 'lucide-react';
 
 interface Props {
@@ -35,7 +36,7 @@ export class ErrorBoundary extends Component<Props, State> {
             </p>
             {this.state.errorMsg && (
                 <div className="bg-red-50 text-red-800 p-4 rounded-md text-sm font-mono max-w-2xl w-full mx-auto text-left overflow-auto">
-                    {this.state.errorMsg}
+                    {typeof this.state.errorMsg === 'object' ? JSON.stringify(this.state.errorMsg, null, 2) : String(this.state.errorMsg)}
                 </div>
             )}
             <button 

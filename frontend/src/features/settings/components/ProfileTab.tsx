@@ -4,7 +4,7 @@ import { settingsApi } from '../api/settingsApi';
 import { Save, Loader2 } from 'lucide-react';
 
 export default function ProfileTab() {
-    const { user } = useAuth();
+    const { user, updateUser } = useAuth();
     
     // Controlled Form State
     const [name, setName] = useState(user?.name || '');
@@ -23,9 +23,8 @@ export default function ProfileTab() {
                 name,
                 password: password || undefined // Only send if user typed a new password
             });
-            
-            // To update the name in the header, we'd ideally get a fresh token or 
-            // update the local AuthContext state. For now, we simulate a successful local save.
+
+            updateUser({ name });
             setMessage({ type: 'success', text: 'Perfil atualizado com sucesso!' });
             setPassword(''); // clear password field
             

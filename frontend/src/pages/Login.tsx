@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { Eye, EyeOff } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 import { useTheme } from '../contexts/ThemeContext';
@@ -7,6 +8,7 @@ import { useTheme } from '../contexts/ThemeContext';
 export function Login() {
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
     const { login } = useAuth();
@@ -35,7 +37,7 @@ export function Login() {
         <div className="min-h-screen flex items-center justify-center bg-slate-50">
             <div className="max-w-md w-full p-8 bg-white rounded-xl shadow-lg border border-slate-100">
                 <div className="text-center mb-8">
-                    <h1 className="text-2xl font-bold text-slate-800">Compras Modular</h1>
+                    <h1 className="text-2xl font-bold text-slate-800">MyCompras</h1>
                     <p className="text-slate-500 mt-2">Acesse sua conta para continuar</p>
                 </div>
 
@@ -59,14 +61,23 @@ export function Login() {
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-slate-700 mb-1">Senha</label>
-                        <input
-                            type="password"
-                            required
-                            value={password}
-                            onChange={e => setPassword(e.target.value)}
-                            className="w-full px-4 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all"
-                            placeholder="••••••••"
-                        />
+                        <div className="relative">
+                            <input
+                                type={showPassword ? 'text' : 'password'}
+                                required
+                                value={password}
+                                onChange={e => setPassword(e.target.value)}
+                                className="w-full px-4 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all pr-10"
+                                placeholder="••••••••"
+                            />
+                            <button
+                                type="button"
+                                onClick={() => setShowPassword(!showPassword)}
+                                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 transition-colors"
+                            >
+                                {showPassword ? <EyeOff size={20} /> : <Eye size={20} />}
+                            </button>
+                        </div>
                     </div>
 
                     <button

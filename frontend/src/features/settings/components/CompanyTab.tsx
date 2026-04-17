@@ -25,15 +25,16 @@ export default function CompanyTab({ initialSettings }: CompanyTabProps) {
     const unmask = (value: string) => value.replace(/\D/g, '');
 
     // Controlled Form State
-    const [companyName, setCompanyName] = useState(initialSettings?.company_name || '');
+    const [companyName, setCompanyName] = useState(initialSettings?.companyName || '');
     const [document, setDocument] = useState(maskCNPJ(initialSettings?.document || ''));
 
     const [isSaving, setIsSaving] = useState(false);
     const [isConfirmOpen, setIsConfirmOpen] = useState(false);
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
-    // Only SUPERADMIN can see this tab
-    if (user?.roleName !== 'SUPERADMIN') {
+    // Only SUPERADMIN/ADMIN can see this tab
+    const isAdmin = user?.roleName === 'SUPERADMIN' || user?.roleName === 'ADMIN';
+    if (!isAdmin) {
         return (
             <div className="p-8 text-center text-slate-500">
                 Você não tem permissão para alterar as configurações do sistema.
@@ -53,13 +54,17 @@ export default function CompanyTab({ initialSettings }: CompanyTabProps) {
 
         try {
             await settingsApi.updateSystemSettings({
-                company_name: companyName,
+                companyName: companyName,
                 document: unmask(document) // Save only numbers
             });
 
             setMessage({ type: 'success', text: 'Dados da empresa atualizados! (Recarregue a página para ver o novo nome no topo).' });
         } catch (err: any) {
-            setMessage({ type: 'error', text: err.response?.data || 'Erro ao atualizar dados da empresa.' });
+            const errorData = err.response?.data;
+            const errorText = typeof errorData === 'object' 
+                ? (errorData.message || JSON.stringify(errorData)) 
+                : (errorData || 'Erro ao atualizar dados da empresa.');
+            setMessage({ type: 'error', text: errorText });
         } finally {
             setIsSaving(false);
         }
@@ -120,7 +125,7 @@ export default function CompanyTab({ initialSettings }: CompanyTabProps) {
                         className="flex items-center gap-2 bg-brand-600 text-white px-4 py-2 rounded-md hover:bg-brand-700 transition-colors disabled:opacity-70"
                     >
                         {isSaving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Save className="w-4 h-4" />}
-                        Salvar Empresa
+                        Salvar
                     </button>
                 </div>
             </form>

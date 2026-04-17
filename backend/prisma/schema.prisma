@@ -1,0 +1,259 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────────────────
+//  SYSTEM
+// ─────────────────────────────────────────────────────────
+
+model SystemSettings {
+  id          Int    @id @default(autoincrement())
+  companyName String @map("company_name") @db.VarChar(255)
+  document    String @default("") @db.VarChar(50)
+  themeConfig Json   @default("{}") @map("theme_config")
+
+  @@map("system_settings")
+}
+
+// ─────────────────────────────────────────────────────────
+//  USERS & AUTH
+// ─────────────────────────────────────────────────────────
+
+model Role {
+  id          String @id @default(uuid()) @db.Uuid
+  name        String @unique @db.VarChar(50)
+  permissions Json   @default("{}")
+
+  users         User[]
+  workflowSteps WorkflowStep[]
+
+  @@map("roles")
+}
+
+model Department {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   @db.VarChar(255)
+  parentId  String?  @map("parent_id") @db.Uuid
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  parent   Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
+  children Department[] @relation("DepartmentHierarchy")
+
+  userDepartments   UserDepartment[]
+  purchases         Purchase[]
+  approvalWorkflows ApprovalWorkflow[]
+
+  @@map("departments")
+}
+
+model User {
+  id           String  @id @default(uuid()) @db.Uuid
+  roleId       String  @map("role_id") @db.Uuid
+  name         String  @db.VarChar(255)
+  email        String  @unique @db.VarChar(255)
+  passwordHash String  @map("password_hash") @db.VarChar(255)
+  isActive     Boolean @default(true) @map("is_active")
+
+  role            Role             @relation(fields: [roleId], references: [id])
+  userDepartments UserDepartment[]
+
+  purchasesRequested  Purchase[]              @relation("PurchaseRequester")
+  approvalLogs        PurchaseApproval[]      @relation("ApprovalActor")
+  workflowSteps       WorkflowStep[]          @relation("StepApprover")
+  workflowBuyerSlots  WorkflowBuyer[]
+
+  @@index([email])
+  @@index([roleId])
+  @@map("users")
+}
+
+model UserDepartment {
+  userId       String @map("user_id") @db.Uuid
+  departmentId String @map("department_id") @db.Uuid
+
+  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  department Department @relation(fields: [departmentId], references: [id], onDelete: Cascade)
+
+  @@id([userId, departmentId])
+  @@map("user_departments")
+}
+
+// ─────────────────────────────────────────────────────────
+//  SUPPLIERS
+// ─────────────────────────────────────────────────────────
+
+model Supplier {
+  id String @id @default(uuid()) @db.Uuid
+
+  // Section 1 - Company
+  companyName String @map("company_name") @db.VarChar(255)
+  tradeName   String @default("") @map("trade_name") @db.VarChar(255)
+  cnpj        String @unique @db.VarChar(20)
+  stateReg    String @default("") @map("state_reg") @db.VarChar(50)
+  status      String @default("ACTIVE") @db.VarChar(20) // ACTIVE, INACTIVE, BLOCKED
+
+  // Section 2 - Contact
+  contactName String @default("") @map("contact_name") @db.VarChar(255)
+  phone       String @default("") @db.VarChar(20)
+  email       String @default("") @db.VarChar(255)
+  comContact  String @default("") @map("com_contact") @db.VarChar(255)
+  finContact  String @default("") @map("fin_contact") @db.VarChar(255)
+
+  // Section 3 - Address
+  zipCode      String @default("") @map("zip_code") @db.VarChar(10)
+  street       String @default("") @db.VarChar(255)
+  number       String @default("") @db.VarChar(20)
+  neighborhood String @default("") @db.VarChar(255)
+  city         String @default("") @db.VarChar(255)
+  state        String @default("") @db.VarChar(2)
+
+  // Section 4 - Bank
+  bank    String @default("") @db.VarChar(255)
+  agency  String @default("") @db.VarChar(50)
+  account String @default("") @db.VarChar(50)
+  pix     String @default("") @db.VarChar(255)
+
+  // Section 5 - Notes
+  notes       String @default("")
+  attachments Json   @default("[]")
+
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  deletedAt DateTime? @map("deleted_at")
+
+  purchases Purchase[]
+
+  @@index([cnpj])
+  @@index([status])
+  @@map("suppliers")
+}
+
+// ─────────────────────────────────────────────────────────
+//  PURCHASES
+// ─────────────────────────────────────────────────────────
+
+model Purchase {
+  id            String   @id @default(uuid()) @db.Uuid
+  number        Int      @default(autoincrement()) @unique
+  requesterId   String   @map("requester_id") @db.Uuid
+  departmentId  String   @map("department_id") @db.Uuid
+  workflowId    String?  @map("workflow_id") @db.Uuid
+  supplierId    String?  @map("supplier_id") @db.Uuid
+  totalAmount   Decimal  @map("total_amount") @db.Decimal(10, 2)
+  status        String   @db.VarChar(50) // DRAFT | PENDING_APPROVAL | APPROVED | REJECTED | PENDING_CLOSING | COMPLETED
+  currentStepId String?  @map("current_step_id") @db.Uuid
+  metadata      Json     @default("{}")
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @updatedAt @map("updated_at")
+
+  requester   User              @relation("PurchaseRequester", fields: [requesterId], references: [id])
+  department  Department        @relation(fields: [departmentId], references: [id])
+  supplier    Supplier?         @relation(fields: [supplierId], references: [id])
+  workflow    ApprovalWorkflow? @relation("PurchaseWorkflow", fields: [workflowId], references: [id])
+  currentStep WorkflowStep?     @relation("PurchaseCurrentStep", fields: [currentStepId], references: [id])
+
+  items    PurchaseItem[]
+  approvals PurchaseApproval[]
+
+  @@index([requesterId])
+  @@index([departmentId])
+  @@index([status])
+  @@index([workflowId])
+  @@map("purchases")
+}
+
+model PurchaseItem {
+  id          String  @id @default(uuid()) @db.Uuid
+  purchaseId  String  @map("purchase_id") @db.Uuid
+  description String  @db.VarChar(255)
+  link        String  @default("")
+  quantity    Decimal @db.Decimal(10, 2)
+  unitPrice   Decimal @map("unit_price") @db.Decimal(10, 2)
+
+  purchase Purchase @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+
+  @@index([purchaseId])
+  @@map("purchase_items")
+}
+
+model PurchaseApproval {
+  id          String   @id @default(uuid()) @db.Uuid
+  purchaseId  String   @map("purchase_id") @db.Uuid
+  stepId      String?  @map("step_id") @db.Uuid
+  actedBy     String   @map("acted_by") @db.Uuid
+  action      String   @db.VarChar(50) // SUBMITTED | APPROVED | REJECTED | COMPLETED | POST_CLOSE_DOCUMENTS_ADDED
+  comments    String   @default("")
+  attachments Json     @default("[]")
+  actedAt     DateTime @default(now()) @map("acted_at")
+
+  purchase Purchase      @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  step     WorkflowStep? @relation(fields: [stepId], references: [id])
+  actor    User          @relation("ApprovalActor", fields: [actedBy], references: [id])
+
+  @@index([purchaseId])
+  @@map("purchase_approvals")
+}
+
+// ─────────────────────────────────────────────────────────
+//  APPROVAL WORKFLOWS
+// ─────────────────────────────────────────────────────────
+
+model ApprovalWorkflow {
+  id                 String   @id @default(uuid()) @db.Uuid
+  departmentId       String   @map("department_id") @db.Uuid
+  previousWorkflowId String?  @map("previous_workflow_id") @db.Uuid
+  version            Int      @default(1)
+  isActive           Boolean  @default(true) @map("is_active")
+  minAmount          Decimal  @default(0) @map("min_amount") @db.Decimal(10, 2)
+  finalAction        String   @default("BUYER_CLOSE") @map("final_action") @db.VarChar(30) // BUYER_CLOSE | AUTO_APPROVE
+
+  department       Department        @relation(fields: [departmentId], references: [id])
+  previousWorkflow ApprovalWorkflow? @relation("WorkflowVersioning", fields: [previousWorkflowId], references: [id])
+  nextVersions     ApprovalWorkflow[] @relation("WorkflowVersioning")
+
+  steps     WorkflowStep[]
+  buyers    WorkflowBuyer[]
+  purchases Purchase[]     @relation("PurchaseWorkflow")
+
+  createdAt     DateTime @default(now()) @map("created_at")
+  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
+
+  @@index([departmentId, isActive])
+  @@map("approval_workflows")
+}
+
+/// Normalized table replacing the old buyerUserIds JSON array
+model WorkflowBuyer {
+  workflowId String @map("workflow_id") @db.Uuid
+  userId     String @map("user_id") @db.Uuid
+
+  workflow ApprovalWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  user     User             @relation(fields: [userId], references: [id])
+
+  @@id([workflowId, userId])
+  @@map("workflow_buyers")
+}
+
+model WorkflowStep {
+  id             String  @id @default(uuid()) @db.Uuid
+  workflowId     String  @map("workflow_id") @db.Uuid
+  stepOrder      Int     @map("step_order")
+  approverRoleId String? @map("approver_role_id") @db.Uuid
+  approverUserId String? @map("approver_user_id") @db.Uuid
+
+  workflow       ApprovalWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  approverRole   Role?            @relation(fields: [approverRoleId], references: [id])
+  approverUser   User?            @relation("StepApprover", fields: [approverUserId], references: [id])
+
+  purchasesAtStep Purchase[]       @relation("PurchaseCurrentStep")
+  approvalLogs    PurchaseApproval[]
+
+  @@index([workflowId])
+  @@map("workflow_steps")
+}

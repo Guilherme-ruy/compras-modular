@@ -51,11 +51,14 @@ export default function App() {
               } />
               <Route path="purchases" element={<PurchaseList />} />
               <Route path="purchases/new" element={<PurchaseCreate />} />
+              <Route path="purchases/:id/edit" element={<PurchaseCreate />} />
               <Route path="purchases/:id" element={<PurchaseDetails />} />
               <Route path="users" element={<UsersList />} />
               <Route path="users/new" element={<UserCreate />} />
+              <Route path="users/:id/edit" element={<UserCreate />} />
               <Route path="departments" element={<DepartmentList />} />
               <Route path="departments/new" element={<DepartmentCreate />} />
+              <Route path="departments/:id/edit" element={<DepartmentCreate />} />
               <Route path="workflows" element={<WorkflowList />} />
               <Route path="workflows/new" element={<WorkflowEdit />} />
               <Route path="workflows/:id/edit" element={<WorkflowEdit />} />

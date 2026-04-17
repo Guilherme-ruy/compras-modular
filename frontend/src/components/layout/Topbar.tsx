@@ -1,23 +1,10 @@
 import { useAuth } from '../../contexts/AuthContext';
 import { LogOut, User } from 'lucide-react';
-import { useState, useEffect } from 'react';
-import api from '../../services/api';
+import { useTheme } from '../../contexts/ThemeContext';
 
 export function Topbar() {
     const { user, logout } = useAuth();
-    const [companyName, setCompanyName] = useState('Compras Modular');
-
-    useEffect(() => {
-        api.get('/system-settings')
-            .then(res => {
-                if (res.data && res.data.company_name) {
-                    setCompanyName(res.data.company_name);
-                }
-            })
-            .catch(err => {
-                console.error("Failed to load company name", err);
-            });
-    }, []);
+    const { companyName } = useTheme();
 
     return (
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
@@ -26,9 +13,23 @@ export function Topbar() {
             </div>
 
             <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2 text-sm text-slate-600">
-                    <User className="w-4 h-4" />
-                    <span>{user?.roleName || 'User'}</span>
+                <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-500 shadow-sm">
+                        <User className="w-4 h-4" />
+                    </div>
+                    <div className="min-w-0">
+                        <p className="max-w-[220px] truncate text-sm font-semibold text-slate-800">
+                            {user?.name || 'Usuario'}
+                        </p>
+                        <p className="max-w-[220px] truncate text-xs text-slate-500">
+                            {user?.email || 'E-mail indisponivel'}
+                        </p>
+                    </div>
+                    <div className="hidden sm:flex items-center">
+                        <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-600 border border-slate-200">
+                            {user?.roleName || 'USER'}
+                        </span>
+                    </div>
                 </div>
                 <button
                     onClick={logout}

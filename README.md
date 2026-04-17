@@ -1,91 +1,260 @@
-# Compras Modular - B2B Procurement System
+# Compras Modular
 
-Este é o repositório do projeto **Compras Modular**, uma arquitetura de Monólito Modular (projetada para fácil transição para Microsserviços), rodando em modelo Single-Tenant. O sistema foi desenvolvido combinando robustez e tipagem do **Golang** no Backend e tematização dinâmica White-Label em **React/Vite** no Frontend.
-
-## 🛠 Pré-requisitos
-Para rodar este projeto em uma nova máquina, você precisa ter instalado:
-- **Docker** e **Docker Compose** (Para o banco de dados PostgreSQL)
-- **Go** (Versão 1.20+ recomendada)
-- **Node.js** (Versão 18+ com npm)
+Sistema de gestão de pedidos de compras com fluxo de aprovação configurável.
 
 ---
 
-## ⚙️ Configuração dos Ambientes (.env)
-### para rodar local*
+## Stack Técnica
 
-Por padrão de segurança, arquivos `.env` não devem ser comitados. Na sua nova máquina, crie os arquivos conforme abaixo:
+| Camada | Tecnologia |
+|---|---|
+| Frontend | React 19 + Vite + TailwindCSS |
+| Backend | NestJS + TypeScript |
+| ORM / DB | Prisma 7 + PostgreSQL 16 |
+| Auth | JWT (Passport) |
+| Container | Docker + Docker Compose |
 
-### 1. Backend (`backend/.env`)
-Crie o arquivo na pasta `backend/` com o seguinte conteúdo:
-```env
-DB_HOST=127.0.0.1
-DB_USER=compras_user
-DB_PASSWORD=compras_password
-DB_NAME=compras_db
-DB_PORT=5433
+---
 
-JWT_SECRET=compras_super_secret_key_2026
-PORT=8080
+## Estrutura do Projeto
+
 ```
-> *Nota: Utilizamos a porta 5433 externamente no Docker para evitar conflito com qualquer PostgreSQL que você já tenha rodando na porta 5432 original da sua máquina local.*
-
-### 2. Frontend (`frontend/.env`)
-Crie o arquivo na pasta `frontend/` com o seguinte conteúdo:
-```env
-VITE_API_URL=http://localhost:8080/api/v1
+compras-modular/
+├── backend/              # NestJS API
+│   ├── prisma/
+│   │   ├── schema.prisma
+│   │   ├── seed.ts
+│   │   └── migrations/
+│   └── src/
+│       ├── auth/
+│       ├── users/
+│       ├── roles/
+│       ├── departments/
+│       ├── suppliers/
+│       ├── purchases/
+│       ├── workflows/
+│       ├── dashboard/
+│       ├── settings/
+│       └── prisma/        # PrismaService (global)
+├── frontend/             # React + Vite
+│   ├── nginx.conf
+│   └── Dockerfile
+├── docker-compose.yml
+└── SKILLS/               # Guidelines de desenvolvimento
 ```
 
 ---
 
-## 🚀 Como Executar o Projeto
+## Variáveis de Ambiente
 
-Abra 3 instâncias separadas no seu terminal (ou 3 abas).
+### Backend (`backend/.env`)
 
-### Terminal 1: Banco de Dados 🐘
-Inicie o PostgreSQL isolado via Docker (na raiz do projeto):
+```env
+DATABASE_URL="postgresql://compras_user:compras_password@localhost:5433/compras_db"
+JWT_SECRET="compras_super_secret_key_2026"
+PORT=3000
+NODE_ENV=development
+```
+
+### Frontend (`frontend/.env`)
+
+```env
+VITE_API_URL=http://localhost:3000/api/v1
+```
+
+---
+
+## Rodando Localmente (sem Docker)
+
+### 1. Subir o banco de dados
+
 ```bash
-docker-compose up db -d
+docker compose up db -d
 ```
-*(Se no futuro quiser resetar o banco de dados totalmente, rode `docker-compose down -v` antes de subir)*
 
-### Terminal 2: Backend e Carga Inicial (Seed) 🐹
-Vá para a pasta do backend, instale as dependências (caso seja o primeiro uso), aplique a carga inicial com Mock Data e inicie o servidor da API.
+### 2. Inicializar o banco
+
 ```bash
 cd backend
-go mod tidy
-go run cmd/seed/main.go
-go run cmd/api/main.go
+npm install
+npx prisma migrate dev --name init
+npx ts-node prisma/seed.ts
 ```
-Você verá: `Starting server on :8080`
 
-### Terminal 3: Frontend Web ⚛️
-Vá para a pasta do frontend, instale os pacotes (apenas na primeira vez na máquina nova) e inicie o Vite Dev Server:
+### 3. Iniciar o backend
+
 ```bash
-cd frontend
+npm run start:dev
+# API: http://localhost:3000/api/v1
+# Swagger: http://localhost:3000/api/docs
+```
+
+### 4. Iniciar o frontend
+
+```bash
+cd ../frontend
 npm install
 npm run dev
+# App: http://localhost:5173
 ```
 
 ---
 
-## 🧪 Contas de Teste e Workflows
-Acesse `http://localhost:5173` no seu navegador. As contas abaixo foram geradas pelo Seed (`main.go`) com a **senha padrão para todas elas: `123456`**
+## Rodando com Docker (Produção)
 
-1. **`joao@empresa.com`** (Perfil: `REQUESTER`)
-   - Papel de Solicitante (Departamento de TI).
-   - Pode criar Pedidos de Compra (Drafts).
-   - Pode "Enviar para Aprovação".
+```bash
+docker compose up --build
+```
 
-2. **`maria@empresa.com`** (Perfil: `APPROVER`)
-   - Papel de Aprovadora 1 (Departamento de TI).
-   - Só entra em cena depois que João envia o pedido.
-   - Pode Aprovar a etapa dela ou Rejeitar com envio obrigatório de comentários.
-
-3. **`admin@empresa.com`** (Perfil: `SUPERADMIN`)
-   - Usuário onipotente para ações críticas do sistema.
-   - O Mock de workflow de TI foi configurado para que, caso o valor escale demais (ou seja o passo 2), exija aprovação adicional deste Admin.
+| Serviço | URL |
+|---|---|
+| API | http://localhost:3000/api/v1 |
+| Frontend | http://localhost:5173 |
+| Swagger | http://localhost:3000/api/docs |
 
 ---
 
-### 🎨 Motor White-Label Dinâmico
-Você notará que a interface do painel web carrega imediatamente uma estética "Green" (Verde). Isso não está chumbado no código do React! Ao logar, observe a requisição de Rede: o banco de dados carrega as diretrizes estéticas nativas da empresa salva na tabela de configurações e projeta dinamicamente sobre o Tailwind V4 via CSS Variables, provando assim a eficácia como Software White-Label B2B!
+## Comandos Úteis
+
+```bash
+# Backend — dentro de /backend
+npm run db:migrate    # Aplicar migrations (produção)
+npm run db:reset      # Resetar banco + recriar schema
+npm run db:seed       # Recriar dados de seed
+npm run db:generate   # Regenerar Prisma Client
+npm run build         # Build TypeScript
+npm run start:dev     # Dev com hot reload
+npm run test          # Testes unitários
+```
+
+---
+
+## Contas de Teste
+
+| E-mail | Perfil | Departamento | Senha |
+|---|---|---|---|
+| admin@empresa.com | SUPERADMIN | Administração | 123456 |
+| aprovador@empresa.com | APROVADOR | TI | 123456 |
+| comprador@empresa.com | COMPRADOR | TI | 123456 |
+| requisitante@empresa.com | REQUISITANTE | TI | 123456 |
+
+---
+
+## Módulos e Endpoints
+
+### Auth
+| Método | Endpoint | Descrição |
+|---|---|---|
+| POST | /auth/login | Login + token JWT |
+
+### Users
+| Método | Endpoint | Acesso |
+|---|---|---|
+| GET | /users | SUPERADMIN |
+| POST | /users | SUPERADMIN |
+| PUT | /users/profile | Autenticado |
+| GET | /admin/users/:id | SUPERADMIN |
+| PUT | /admin/users/:id | SUPERADMIN |
+| POST | /admin/users/:id/impact | SUPERADMIN |
+
+### Departments
+| Método | Endpoint | Acesso |
+|---|---|---|
+| GET | /departments | Autenticado |
+| GET | /departments/:id | SUPERADMIN |
+| POST | /departments | SUPERADMIN |
+| PUT | /departments/:id | SUPERADMIN |
+
+### Suppliers
+| Método | Endpoint | Acesso |
+|---|---|---|
+| GET | /suppliers | Autenticado |
+| GET | /suppliers/:id | Autenticado |
+| POST | /suppliers | Autenticado |
+| PUT | /suppliers/:id | Autenticado |
+| PATCH | /suppliers/:id/status | Autenticado |
+| DELETE | /suppliers/:id | Autenticado |
+
+### Purchases
+| Método | Endpoint | Acesso |
+|---|---|---|
+| GET | /purchases | Autenticado (scoped) |
+| GET | /purchases/:id | Autenticado (scoped) |
+| POST | /purchases | Autenticado |
+| PUT | /purchases/:id | Solicitante |
+| POST | /purchases/:id/submit | Autenticado |
+| POST | /purchases/:id/approve | APROVADOR |
+| POST | /purchases/:id/reject | APROVADOR |
+| POST | /purchases/:id/close | COMPRADOR/Solicitante |
+| POST | /purchases/:id/post-close-documents | COMPRADOR |
+
+### Workflows
+| Método | Endpoint | Acesso |
+|---|---|---|
+| GET | /workflows | Autenticado |
+| POST | /workflows | SUPERADMIN |
+| PUT | /workflows/:id | SUPERADMIN |
+| DELETE | /workflows/:id | SUPERADMIN |
+
+### Settings
+| Método | Endpoint | Acesso |
+|---|---|---|
+| GET | /settings/theme | Público |
+| GET | /settings | SUPERADMIN |
+| PUT | /settings | SUPERADMIN |
+
+### Dashboard
+| Método | Endpoint | Acesso |
+|---|---|---|
+| GET | /dashboard/metrics | Autenticado |
+
+---
+
+## Arquitetura do Backend
+
+Seguindo as guidelines em `SKILLS/backend-dev-guidelines.md`:
+
+```
+Controller → Service → Repository → PrismaService
+```
+
+- **Controllers**: apenas roteiam, sem lógica de negócio
+- **Services**: toda a lógica de negócio + validações + RBAC
+- **Repositories**: encapsulam todas as queries Prisma
+- **PrismaService**: singleton global injetado em todos os módulos
+
+---
+
+## Fluxo de Aprovação
+
+```
+DRAFT → PENDING_APPROVAL → [etapas] → PENDING_CLOSING → COMPLETED
+                                    ↘ REJECTED
+```
+
+1. Solicitante cria o pedido (DRAFT)
+2. Submete para aprovação → vai para a 1ª etapa
+3. Aprovadores aprovam em sequência
+4. Após última etapa:
+   - `BUYER_CLOSE`: aguarda comprador fechar → PENDING_CLOSING → COMPLETED
+   - `AUTO_APPROVE`: completa automaticamente → COMPLETED
+5. Comprador pode anexar documentos pós-fechamento
+
+---
+
+## Banco de Dados — Principais Tabelas
+
+| Tabela | Descrição |
+|---|---|
+| roles | Papéis do sistema |
+| users | Usuários |
+| user_departments | Vínculo N:N usuário-departamento |
+| departments | Departamentos hierárquicos |
+| suppliers | Fornecedores (com soft delete) |
+| purchases | Pedidos de compra |
+| purchase_items | Itens dos pedidos |
+| purchase_approvals | Log de ações de aprovação |
+| approval_workflows | Fluxos de aprovação por departamento |
+| workflow_steps | Etapas dos fluxos |
+| workflow_buyers | Compradores N:N por fluxo (normalizado) |
+| system_settings | Configurações globais + tema |

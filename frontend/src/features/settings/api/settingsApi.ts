@@ -9,11 +9,11 @@ export const settingsApi = {
 
     // System Settings (Company + Theme)
     getSystemSettings: async (): Promise<SystemSettings> => {
-        const response = await api.get<SystemSettings>('/system-settings');
+        const response = await api.get<SystemSettings>('/settings');
         return response.data;
     },
 
     updateSystemSettings: async (settings: Partial<SystemSettings>): Promise<void> => {
-        await api.put('/system-settings', settings);
+        await api.put('/settings', settings);
     }
 };
