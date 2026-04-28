@@ -86,13 +86,15 @@ Services como `purchases` e `departments` filtram dados em `findAll()` por role:
 ### Módulos
 | Módulo | Caminho | Responsabilidade |
 |---|---|---|
-| auth | `src/auth/` | Login + JWT |
+| auth | `src/auth/` | Login + JWT + forgot/reset/change-password |
 | users | `src/users/` | CRUD usuários + perfil; `admin-users.controller.ts` para operações admin |
 | roles | `src/roles/` | Listagem de roles |
 | departments | `src/departments/` | CRUD com hierarquia via `parentId` auto-referencial |
 | suppliers | `src/suppliers/` | CRUD fornecedores + soft delete via `deletedAt` |
-| purchases | `src/purchases/` | CRUD pedidos + engine de aprovação |
+| categories | `src/categories/` | CRUD categorias hierárquicas de itens |
+| purchases | `src/purchases/` | CRUD pedidos + engine de aprovação + notificações |
 | workflows | `src/workflows/` | CRUD fluxos de aprovação por departamento |
+| notifications | `src/notifications/` | Notificações por evento; `notify()` chamado dentro das transações |
 | dashboard | `src/dashboard/` | Métricas agregadas (sem repository — queries diretas no service) |
 | settings | `src/settings/` | Config do sistema + endpoint público `/settings/theme` |
 | prisma | `src/prisma/` | PrismaService global |
@@ -151,12 +153,15 @@ Usar `normalizeListResponse()` de `utils/pagination.ts` para tratar tanto arrays
 | user_departments | Vínculo N:N usuário-departamento |
 | departments | Departamentos hierárquicos (`parentId` auto-referencial) |
 | suppliers | Fornecedores (`isActive` + `deletedAt` para soft delete) |
+| categories | Categorias de itens hierárquicas (`parentId` auto-referencial) |
 | purchases | Pedidos de compra |
-| purchase_items | Itens dos pedidos |
+| purchase_items | Itens dos pedidos (com `categoryId` opcional) |
 | purchase_approvals | Log imutável de ações de aprovação |
 | approval_workflows | Fluxos por departamento (`previousWorkflowId` para versionamento) |
 | workflow_steps | Etapas dos fluxos (por role ou usuário específico, ordenadas) |
 | workflow_buyers | Compradores N:N por fluxo |
+| password_reset_tokens | Tokens de reset de senha (SHA-256, expiram em 1h, uso único) |
+| notifications | Notificações por usuário com suporte a `readAt` |
 | system_settings | Configurações globais + tema (JSON) |
 
 ## Contas de Teste
@@ -165,7 +170,7 @@ Senha padrão: `123456`
 
 | E-mail | Role |
 |---|---|
-| admin@empresa.com | SUPERADMIN |
+| admin@empresa.com | SUPERADMIN | senha: Teste123
 | aprovador@empresa.com | APROVADOR |
 | comprador@empresa.com | COMPRADOR |
 | requisitante@empresa.com | REQUISITANTE |

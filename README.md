@@ -1,6 +1,6 @@
 # Compras Modular
 
-Sistema de gestão de pedidos de compras com fluxo de aprovação configurável.
+Sistema de gestão de pedidos de compras com fluxo de aprovação configurável, categorias de itens, notificações em tempo real e redefinição de senha.
 
 ---
 
@@ -8,9 +8,9 @@ Sistema de gestão de pedidos de compras com fluxo de aprovação configurável.
 
 | Camada | Tecnologia |
 |---|---|
-| Frontend | React 19 + Vite + TailwindCSS |
-| Backend | NestJS + TypeScript |
-| ORM / DB | Prisma 7 + PostgreSQL 16 |
+| Frontend | React 19 + Vite 7 + TailwindCSS 4 + TanStack Query 5 |
+| Backend | NestJS 11 + TypeScript |
+| ORM / DB | Prisma 7 + `@prisma/adapter-pg` + PostgreSQL 16 |
 | Auth | JWT (Passport) |
 | Container | Docker + Docker Compose |
 
@@ -26,21 +26,23 @@ compras-modular/
 │   │   ├── seed.ts
 │   │   └── migrations/
 │   └── src/
-│       ├── auth/
+│       ├── auth/           # Login + JWT + reset/change password
 │       ├── users/
 │       ├── roles/
 │       ├── departments/
 │       ├── suppliers/
-│       ├── purchases/
+│       ├── purchases/      # Engine de aprovação
 │       ├── workflows/
+│       ├── categories/     # Categorias hierárquicas de itens
+│       ├── notifications/  # Notificações em tempo real (polling)
 │       ├── dashboard/
 │       ├── settings/
-│       └── prisma/        # PrismaService (global)
+│       └── prisma/         # PrismaService (global)
 ├── frontend/             # React + Vite
 │   ├── nginx.conf
 │   └── Dockerfile
 ├── docker-compose.yml
-└── SKILLS/               # Guidelines de desenvolvimento
+└── ROADMAP.md            # Iniciativas de desenvolvimento priorizadas
 ```
 
 ---
@@ -72,20 +74,22 @@ VITE_API_URL=http://localhost:3000/api/v1
 docker compose up db -d
 ```
 
+> O banco expõe a porta **5433** no host (mapeada para 5432 no container).
+
 ### 2. Inicializar o banco
 
 ```bash
 cd backend
 npm install
-npx prisma migrate dev --name init
-npx ts-node prisma/seed.ts
+npx prisma migrate dev
+npx prisma db seed
 ```
 
 ### 3. Iniciar o backend
 
 ```bash
 npm run start:dev
-# API: http://localhost:3000/api/v1
+# API:     http://localhost:3000/api/v1
 # Swagger: http://localhost:3000/api/docs
 ```
 
@@ -118,13 +122,15 @@ docker compose up --build
 
 ```bash
 # Backend — dentro de /backend
-npm run db:migrate    # Aplicar migrations (produção)
-npm run db:reset      # Resetar banco + recriar schema
-npm run db:seed       # Recriar dados de seed
-npm run db:generate   # Regenerar Prisma Client
-npm run build         # Build TypeScript
-npm run start:dev     # Dev com hot reload
-npm run test          # Testes unitários
+npm run start:dev         # Dev com hot reload
+npm run build             # Build TypeScript para dist/
+npm run test              # Testes unitários (Jest)
+npm run lint              # ESLint
+
+npx prisma migrate dev    # Criar e aplicar migration de dev
+npx prisma db seed        # Recriar dados de seed
+npx prisma generate       # Regenerar Prisma Client após alterar schema
+npx prisma studio         # Visualizar banco no browser
 ```
 
 ---
@@ -133,10 +139,12 @@ npm run test          # Testes unitários
 
 | E-mail | Perfil | Departamento | Senha |
 |---|---|---|---|
-| admin@empresa.com | SUPERADMIN | Administração | 123456 |
+| admin@empresa.com | SUPERADMIN | Administração | Teste123 |
 | aprovador@empresa.com | APROVADOR | TI | 123456 |
 | comprador@empresa.com | COMPRADOR | TI | 123456 |
 | requisitante@empresa.com | REQUISITANTE | TI | 123456 |
+
+> **Nota:** A senha do admin foi alterada durante os testes. Use `Teste123`.
 
 ---
 
@@ -146,6 +154,9 @@ npm run test          # Testes unitários
 | Método | Endpoint | Descrição |
 |---|---|---|
 | POST | /auth/login | Login + token JWT |
+| POST | /auth/forgot-password | Solicitar link de reset (sempre 200) |
+| POST | /auth/reset-password | Redefinir senha via token |
+| POST | /auth/change-password | Trocar senha (autenticado) |
 
 ### Users
 | Método | Endpoint | Acesso |
@@ -155,7 +166,6 @@ npm run test          # Testes unitários
 | PUT | /users/profile | Autenticado |
 | GET | /admin/users/:id | SUPERADMIN |
 | PUT | /admin/users/:id | SUPERADMIN |
-| POST | /admin/users/:id/impact | SUPERADMIN |
 
 ### Departments
 | Método | Endpoint | Acesso |
@@ -175,6 +185,16 @@ npm run test          # Testes unitários
 | PATCH | /suppliers/:id/status | Autenticado |
 | DELETE | /suppliers/:id | Autenticado |
 
+### Categories
+| Método | Endpoint | Acesso |
+|---|---|---|
+| GET | /categories | Autenticado |
+| GET | /categories/tree | Autenticado |
+| GET | /categories/:id | Autenticado |
+| POST | /categories | ADMIN+ |
+| PUT | /categories/:id | ADMIN+ |
+| PATCH | /categories/:id/status | ADMIN+ |
+
 ### Purchases
 | Método | Endpoint | Acesso |
 |---|---|---|
@@ -187,6 +207,14 @@ npm run test          # Testes unitários
 | POST | /purchases/:id/reject | APROVADOR |
 | POST | /purchases/:id/close | COMPRADOR/Solicitante |
 | POST | /purchases/:id/post-close-documents | COMPRADOR |
+
+### Notifications
+| Método | Endpoint | Acesso |
+|---|---|---|
+| GET | /notifications | Autenticado |
+| GET | /notifications/unread-count | Autenticado |
+| PATCH | /notifications/:id/read | Autenticado |
+| PATCH | /notifications/read-all | Autenticado |
 
 ### Workflows
 | Método | Endpoint | Acesso |
@@ -212,8 +240,6 @@ npm run test          # Testes unitários
 
 ## Arquitetura do Backend
 
-Seguindo as guidelines em `SKILLS/backend-dev-guidelines.md`:
-
 ```
 Controller → Service → Repository → PrismaService
 ```
@@ -228,17 +254,19 @@ Controller → Service → Repository → PrismaService
 ## Fluxo de Aprovação
 
 ```
-DRAFT → PENDING_APPROVAL → [etapas] → PENDING_CLOSING → COMPLETED
-                                    ↘ REJECTED
+DRAFT
+  ↓ submit() — notifica aprovadores da etapa 1
+PENDING_APPROVAL
+  ↓ approve() — percorre WorkflowSteps em ordem
+[Etapa 1 → Etapa 2 → ... → Etapa Final]
+  ↓ quando finalAction = BUYER_CLOSE
+PENDING_CLOSING   — notifica solicitante + compradores
+  ↓ close()
+COMPLETED         — notifica solicitante
+              ↘ REJECTED (qualquer etapa) — notifica solicitante
 ```
 
-1. Solicitante cria o pedido (DRAFT)
-2. Submete para aprovação → vai para a 1ª etapa
-3. Aprovadores aprovam em sequência
-4. Após última etapa:
-   - `BUYER_CLOSE`: aguarda comprador fechar → PENDING_CLOSING → COMPLETED
-   - `AUTO_APPROVE`: completa automaticamente → COMPLETED
-5. Comprador pode anexar documentos pós-fechamento
+Cada transição gera notificações automáticas para os usuários afetados.
 
 ---
 
@@ -247,14 +275,17 @@ DRAFT → PENDING_APPROVAL → [etapas] → PENDING_CLOSING → COMPLETED
 | Tabela | Descrição |
 |---|---|
 | roles | Papéis do sistema |
-| users | Usuários |
+| users | Usuários (`isActive` para soft disable) |
 | user_departments | Vínculo N:N usuário-departamento |
-| departments | Departamentos hierárquicos |
-| suppliers | Fornecedores (com soft delete) |
+| departments | Departamentos hierárquicos (`parentId` auto-referencial) |
+| suppliers | Fornecedores (`isActive` + `deletedAt` para soft delete) |
+| categories | Categorias de itens hierárquicas (`parentId` auto-referencial) |
 | purchases | Pedidos de compra |
-| purchase_items | Itens dos pedidos |
-| purchase_approvals | Log de ações de aprovação |
-| approval_workflows | Fluxos de aprovação por departamento |
-| workflow_steps | Etapas dos fluxos |
-| workflow_buyers | Compradores N:N por fluxo (normalizado) |
-| system_settings | Configurações globais + tema |
+| purchase_items | Itens dos pedidos (com `categoryId` opcional) |
+| purchase_approvals | Log imutável de ações de aprovação |
+| approval_workflows | Fluxos por departamento (`previousWorkflowId` para versionamento) |
+| workflow_steps | Etapas dos fluxos (por role ou usuário específico, ordenadas) |
+| workflow_buyers | Compradores N:N por fluxo |
+| password_reset_tokens | Tokens de redefinição de senha (SHA-256, expiram em 1h) |
+| notifications | Notificações por usuário com suporte a `readAt` |
+| system_settings | Configurações globais + tema (JSON) |

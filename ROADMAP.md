@@ -8,8 +8,8 @@ Cada item descreve o que muda no banco, no backend e no frontend.
 | # | Iniciativa | Status |
 |---|---|---|
 | 6 | Categorias de Itens | ✅ Concluída |
-| 2 | Redefinição de Senha | 🚧 Em andamento |
-| 1 | Notificações | ⬜ Pendente |
+| 2 | Redefinição de Senha | ✅ Concluída |
+| 1 | Notificações | ✅ Concluída |
 | 3 | Armazenamento de Arquivos (MinIO) | ⬜ Pendente |
 | 4 | Exportação PDF e Excel | ⬜ Pendente |
 | 5 | Multi-Cotação | ⬜ Pendente |

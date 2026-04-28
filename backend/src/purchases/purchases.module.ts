@@ -5,9 +5,10 @@ import { PurchasesRepository } from './purchases.repository';
 import { WorkflowsModule } from '../workflows/workflows.module';
 import { UsersModule } from '../users/users.module';
 import { DepartmentsModule } from '../departments/departments.module';
+import { NotificationsModule } from '../notifications/notifications.module';
 
 @Module({
-  imports: [WorkflowsModule, UsersModule, DepartmentsModule],
+  imports: [WorkflowsModule, UsersModule, DepartmentsModule, NotificationsModule],
   controllers: [PurchasesController],
   providers: [PurchasesService, PurchasesRepository],
 })

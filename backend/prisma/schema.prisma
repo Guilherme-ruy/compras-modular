@@ -68,6 +68,7 @@ model User {
   workflowSteps       WorkflowStep[]          @relation("StepApprover")
   workflowBuyerSlots  WorkflowBuyer[]
   passwordResetTokens PasswordResetToken[]
+  notifications       Notification[]
 
   @@index([email])
   @@index([roleId])
@@ -194,6 +195,7 @@ model Purchase {
 
   items    PurchaseItem[]
   approvals PurchaseApproval[]
+  notifications Notification[]
 
   @@index([requesterId])
   @@index([departmentId])
@@ -292,4 +294,27 @@ model WorkflowStep {
 
   @@index([workflowId])
   @@map("workflow_steps")
+}
+
+// ─────────────────────────────────────────────────────────
+//  NOTIFICATIONS
+// ─────────────────────────────────────────────────────────
+
+model Notification {
+  id         String    @id @default(uuid()) @db.Uuid
+  userId     String    @map("user_id") @db.Uuid
+  type       String    @db.VarChar(50)
+  // PURCHASE_SUBMITTED | PURCHASE_APPROVED_STEP | PURCHASE_APPROVED_FINAL
+  // PURCHASE_REJECTED | PURCHASE_PENDING_CLOSING | PURCHASE_COMPLETED
+  title      String    @db.VarChar(255)
+  body       String
+  purchaseId String?   @map("purchase_id") @db.Uuid
+  readAt     DateTime? @map("read_at")
+  createdAt  DateTime  @default(now()) @map("created_at")
+
+  user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  purchase Purchase? @relation(fields: [purchaseId], references: [id], onDelete: SetNull)
+
+  @@index([userId, readAt])
+  @@map("notifications")
 }

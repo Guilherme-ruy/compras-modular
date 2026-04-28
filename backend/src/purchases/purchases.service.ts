@@ -10,6 +10,7 @@ import { WorkflowsRepository } from '../workflows/workflows.repository';
 import { UsersRepository } from '../users/users.repository';
 import { DepartmentsRepository } from '../departments/departments.repository';
 import { CreatePurchaseDto, UpdatePurchaseDto, WorkflowActionDto } from './dto/purchase.dto';
+import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
 export class PurchasesService {
@@ -19,6 +20,7 @@ export class PurchasesService {
     private readonly workflowsRepository: WorkflowsRepository,
     private readonly usersRepository: UsersRepository,
     private readonly departmentsRepository: DepartmentsRepository,
+    private readonly notificationsService: NotificationsService,
   ) {}
 
   // ── LIST ──────────────────────────────────────────────────────────────────
@@ -221,6 +223,9 @@ export class PurchasesService {
 
     const firstStep = steps[0];
 
+    // Resolve aprovadores da etapa 1 para notificar
+    const approverIds = await this.resolveStepApproverIds(firstStep);
+
     await this.prisma.$transaction(async (tx) => {
       await this.purchasesRepository.createApprovalLog(tx, {
         purchaseId,
@@ -229,6 +234,13 @@ export class PurchasesService {
         action: 'SUBMITTED',
       });
       await this.purchasesRepository.updateStatusAndStep(tx, purchaseId, 'PENDING_APPROVAL', firstStep.id, workflow.id);
+      await this.notificationsService.notify(
+        approverIds,
+        'PURCHASE_SUBMITTED',
+        `Pedido #${purchase.number} de ${purchase.requester?.name ?? 'usuário'} aguarda sua aprovação.`,
+        purchaseId,
+        tx,
+      );
     });
   }
 
@@ -269,6 +281,38 @@ export class PurchasesService {
       await this.purchasesRepository.updateStatusAndStep(
         tx, purchaseId, newStatus, nextStep?.id ?? null,
       );
+
+      if (nextStep) {
+        // Ainda há próxima etapa — notifica aprovadores dela
+        const nextApproverIds = await this.resolveStepApproverIds(nextStep);
+        await this.notificationsService.notify(
+          nextApproverIds,
+          'PURCHASE_APPROVED_STEP',
+          `Pedido #${purchase.number} chegou à sua etapa de aprovação.`,
+          purchaseId,
+          tx,
+        );
+      } else if (newStatus === 'PENDING_CLOSING') {
+        // Aprovação final — notifica solicitante + compradores
+        const buyerIds = (purchase.workflow?.buyers ?? []).map((b: any) => b.userId);
+        await this.notificationsService.notify(
+          [purchase.requesterId, ...buyerIds],
+          'PURCHASE_PENDING_CLOSING',
+          `Pedido #${purchase.number} foi aprovado e aguarda fechamento.`,
+          purchaseId,
+          tx,
+        );
+      } else if (newStatus === 'APPROVED') {
+        // AUTO_APPROVE — notifica solicitante
+        const buyerIds = (purchase.workflow?.buyers ?? []).map((b: any) => b.userId);
+        await this.notificationsService.notify(
+          [purchase.requesterId, ...buyerIds],
+          'PURCHASE_APPROVED_FINAL',
+          `Pedido #${purchase.number} foi totalmente aprovado!`,
+          purchaseId,
+          tx,
+        );
+      }
     });
   }
 
@@ -297,6 +341,13 @@ export class PurchasesService {
         attachments: dto.attachments,
       });
       await this.purchasesRepository.updateStatusAndStep(tx, purchaseId, 'REJECTED', null);
+      await this.notificationsService.notify(
+        [purchase.requesterId],
+        'PURCHASE_REJECTED',
+        `Seu pedido #${purchase.number} foi rejeitado.`,
+        purchaseId,
+        tx,
+      );
     });
   }
 
@@ -323,6 +374,13 @@ export class PurchasesService {
         attachments: dto.attachments,
       });
       await this.purchasesRepository.updateStatusAndStep(tx, purchaseId, 'COMPLETED', null);
+      await this.notificationsService.notify(
+        [purchase.requesterId],
+        'PURCHASE_COMPLETED',
+        `Seu pedido #${purchase.number} foi concluído!`,
+        purchaseId,
+        tx,
+      );
     });
   }
 
@@ -419,5 +477,18 @@ export class PurchasesService {
     }
 
     return permissions;
+  }
+  private async resolveStepApproverIds(step: any): Promise<string[]> {
+    // Se a etapa aponta para um usuário específico
+    if (step.approverUserId) return [step.approverUserId];
+    // Se aponta para uma role, busca todos os usuários com essa role
+    if (step.approverRoleId) {
+      const users = await this.prisma.user.findMany({
+        where: { roleId: step.approverRoleId, isActive: true },
+        select: { id: true },
+      });
+      return users.map((u) => u.id);
+    }
+    return [];
   }
 }

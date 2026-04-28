@@ -1,10 +1,10 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, ShoppingCart, Settings, Users, Building2, GitMerge, Store, Layers } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, Settings, Users, Building2, GitMerge, Store, Layers, LogOut } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useAuth } from '../../contexts/AuthContext';
 
 export function Sidebar() {
-    const { user } = useAuth();
+    const { user, logout } = useAuth();
 
     const routes = [
         { path: '/app/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
@@ -21,11 +21,13 @@ export function Sidebar() {
 
     return (
         <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col h-full shrink-0">
+            {/* Logo */}
             <div className="h-16 flex items-center px-6 border-b border-slate-800 bg-brand-900">
                 <h1 className="text-white font-bold text-xl tracking-tight">CM</h1>
             </div>
 
-            <nav className="flex-1 py-4 flex flex-col gap-1 px-3">
+            {/* Nav */}
+            <nav className="flex-1 py-4 flex flex-col gap-1 px-3 overflow-y-auto">
                 {routes.map((route) => (
                     <NavLink
                         key={route.path}
@@ -42,6 +44,17 @@ export function Sidebar() {
                     </NavLink>
                 ))}
             </nav>
+
+            {/* Rodapé — Logout */}
+            <div className="px-3 py-4 border-t border-slate-800">
+                <button
+                    onClick={logout}
+                    className="flex items-center gap-3 w-full px-3 py-2 rounded-md text-sm font-medium text-slate-400 hover:bg-slate-800 hover:text-white transition-colors"
+                >
+                    <LogOut className="w-5 h-5" />
+                    Sair
+                </button>
+            </div>
         </aside>
     );
 }

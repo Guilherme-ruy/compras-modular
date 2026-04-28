@@ -1,10 +1,11 @@
 import { useAuth } from '../../contexts/AuthContext';
-import { LogOut, User } from 'lucide-react';
+import { User } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
 import { useNavigate } from 'react-router-dom';
+import { NotificationBell } from './NotificationBell';
 
 export function Topbar() {
-    const { user, logout } = useAuth();
+    const { user } = useAuth();
     const { companyName } = useTheme();
     const navigate = useNavigate();
 
@@ -14,7 +15,11 @@ export function Topbar() {
                 <h2 className="text-lg font-semibold text-slate-800">{companyName}</h2>
             </div>
 
-            <div className="flex items-center gap-4">
+            <div className="flex items-center gap-3">
+                {/* Sino de notificações */}
+                <NotificationBell />
+
+                {/* Avatar / perfil */}
                 <button
                     onClick={() => navigate('/app/settings')}
                     className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 hover:bg-slate-100 hover:border-slate-300 transition-colors cursor-pointer"
@@ -24,11 +29,11 @@ export function Topbar() {
                         <User className="w-4 h-4" />
                     </div>
                     <div className="min-w-0">
-                        <p className="max-w-[220px] truncate text-sm font-semibold text-slate-800">
-                            {user?.name || 'Usuario'}
+                        <p className="max-w-[200px] truncate text-sm font-semibold text-slate-800">
+                            {user?.name || 'Usuário'}
                         </p>
-                        <p className="max-w-[220px] truncate text-xs text-slate-500">
-                            {user?.email || 'E-mail indisponivel'}
+                        <p className="max-w-[200px] truncate text-xs text-slate-500">
+                            {user?.email || 'E-mail indisponível'}
                         </p>
                     </div>
                     <div className="hidden sm:flex items-center">
@@ -36,13 +41,6 @@ export function Topbar() {
                             {user?.roleName || 'USER'}
                         </span>
                     </div>
-                </button>
-                <button
-                    onClick={logout}
-                    className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"
-                    title="Sair"
-                >
-                    <LogOut className="w-5 h-5" />
                 </button>
             </div>
         </header>
