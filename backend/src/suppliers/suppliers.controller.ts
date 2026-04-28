@@ -6,6 +6,8 @@ import { ApiTags, ApiBearerAuth, ApiOperation, ApiQuery } from '@nestjs/swagger'
 import { SuppliersService } from './suppliers.service';
 import { CreateSupplierDto, UpdateSupplierDto, UpdateSupplierStatusDto } from './dto/supplier.dto';
 import { JwtAuthGuard } from '../auth/auth.guard';
+import { CurrentUser } from '../common/decorators/current-user.decorator';
+import type { CurrentUserData } from '../common/decorators/current-user.decorator';
 
 @ApiTags('Suppliers')
 @ApiBearerAuth()
@@ -46,31 +48,33 @@ export class SuppliersController {
 
   @Post()
   @ApiOperation({ summary: 'Criar fornecedor' })
-  create(@Body() dto: CreateSupplierDto) {
-    return this.suppliersService.create(dto);
+  create(@CurrentUser() user: CurrentUserData, @Body() dto: CreateSupplierDto) {
+    return this.suppliersService.create(user.roleName, dto);
   }
 
   @Put(':id')
   @ApiOperation({ summary: 'Atualizar fornecedor' })
   update(
     @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: CurrentUserData,
     @Body() dto: UpdateSupplierDto,
   ) {
-    return this.suppliersService.update(id, dto);
+    return this.suppliersService.update(id, user.roleName, dto);
   }
 
   @Patch(':id/status')
   @ApiOperation({ summary: 'Atualizar status do fornecedor' })
   updateStatus(
     @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser() user: CurrentUserData,
     @Body() dto: UpdateSupplierStatusDto,
   ) {
-    return this.suppliersService.updateStatus(id, dto.status);
+    return this.suppliersService.updateStatus(id, user.roleName, dto.status);
   }
 
   @Delete(':id')
   @ApiOperation({ summary: 'Remover fornecedor (soft delete)' })
-  remove(@Param('id', ParseUUIDPipe) id: string) {
-    return this.suppliersService.remove(id);
+  remove(@Param('id', ParseUUIDPipe) id: string, @CurrentUser() user: CurrentUserData) {
+    return this.suppliersService.remove(id, user.roleName);
   }
 }

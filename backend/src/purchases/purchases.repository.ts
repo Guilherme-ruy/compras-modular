@@ -15,7 +15,7 @@ export const PURCHASE_INCLUDE = {
   currentStep: {
     include: { approverRole: true, approverUser: true },
   },
-  items: true,
+  items: { include: { category: { select: { id: true, name: true, parent: { select: { id: true, name: true } } } } } },
 } as const;
 
 @Injectable()
@@ -100,7 +100,7 @@ export class PurchasesRepository {
     supplierId?: string;
     totalAmount: number;
     metadata: any;
-    items: Array<{ description: string; link?: string; quantity: number; unitPrice: number }>;
+    items: Array<{ description: string; link?: string; quantity: number; unitPrice: number; categoryId?: string }>;
   }) {
     return this.prisma.purchase.create({
       data: {
@@ -116,6 +116,7 @@ export class PurchasesRepository {
             link: i.link ?? '',
             quantity: i.quantity,
             unitPrice: i.unitPrice,
+            ...(i.categoryId ? { categoryId: i.categoryId } : {}),
           })),
         },
       },
@@ -130,7 +131,7 @@ export class PurchasesRepository {
       supplierId?: string | null;
       totalAmount?: number;
       metadata?: any;
-      items?: Array<{ description: string; link?: string; quantity: number; unitPrice: number }>;
+      items?: Array<{ description: string; link?: string; quantity: number; unitPrice: number; categoryId?: string }>;
     },
   ) {
     const { items, ...rest } = data;
@@ -144,6 +145,7 @@ export class PurchasesRepository {
             link: i.link ?? '',
             quantity: i.quantity,
             unitPrice: i.unitPrice,
+            ...(i.categoryId ? { categoryId: i.categoryId } : {}),
           })),
         });
       }

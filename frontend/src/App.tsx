@@ -16,6 +16,11 @@ import { WorkflowList } from './pages/WorkflowList';
 import { WorkflowEdit } from './pages/WorkflowEdit';
 import { SupplierList } from './pages/SupplierList';
 import { SupplierForm } from './pages/SupplierForm';
+import { CategoryList } from './pages/CategoryList';
+import { CategoryForm } from './pages/CategoryForm';
+import { ForgotPassword } from './pages/ForgotPassword';
+import { ResetPassword } from './pages/ResetPassword';
+import { Profile } from './pages/Profile';
 
 // Lazy loaded features (Suspense compliance)
 const Dashboard = lazy(() => import('./features/dashboard/components/Dashboard'));
@@ -38,6 +43,8 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Navigate to="/app" replace />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/forgot-password" element={<ForgotPassword />} />
+      <Route path="/reset-password" element={<ResetPassword />} />
 
       <Route path="/app/*" element={
         <PrivateRoute>
@@ -65,6 +72,10 @@ export default function App() {
               <Route path="suppliers" element={<SupplierList />} />
               <Route path="suppliers/new" element={<SupplierForm />} />
               <Route path="suppliers/:id/edit" element={<SupplierForm />} />
+              <Route path="categories" element={<CategoryList />} />
+              <Route path="categories/new" element={<CategoryForm />} />
+              <Route path="categories/:id/edit" element={<CategoryForm />} />
+              <Route path="profile" element={<Profile />} />
               <Route path="settings" element={
                 <SuspenseLoader>
                   <Settings />

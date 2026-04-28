@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Pencil, Plus, Search, Trash2 } from 'lucide-react';
 import api from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { SupplierStatusColors, SupplierStatusLabels } from '../constants/suppliers';
 import { StandardTable, type TableColumn } from '../components/ui/table/StandardTable';
@@ -43,6 +44,8 @@ const defaultSort: SortState = {
 
 export function SupplierList() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canManage = user?.roleName?.toUpperCase() !== 'VIEWER';
   const [rows, setRows] = useState<Supplier[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -127,8 +130,8 @@ export function SupplierList() {
     });
   }, [fetchSuppliers]);
 
-  const columns = useMemo<TableColumn<Supplier>[]>(
-    () => [
+  const columns = useMemo<TableColumn<Supplier>[]>(() => {
+    const base: TableColumn<Supplier>[] = [
       {
         id: 'companyName',
         label: 'Razao social',
@@ -181,7 +184,10 @@ export function SupplierList() {
           </span>
         ),
       },
-      {
+    ];
+
+    if (canManage) {
+      base.push({
         id: 'actions',
         label: 'Acoes',
         align: 'right',
@@ -201,10 +207,11 @@ export function SupplierList() {
             />
           </div>
         ),
-      },
-    ],
-    [navigate, requestDelete],
-  );
+      });
+    }
+
+    return base;
+  }, [navigate, requestDelete, canManage]);
 
   return (
     <div className="space-y-5">
@@ -213,14 +220,16 @@ export function SupplierList() {
           <h1 className="text-2xl font-bold text-slate-800">Fornecedores</h1>
           <p className="mt-1 text-sm text-slate-500">Mantenha a base de fornecedores organizada e atualizada.</p>
         </div>
-        <button
-          type="button"
-          onClick={() => navigate('/app/suppliers/new')}
-          className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
-        >
-          <Plus className="h-4 w-4" />
-          Novo fornecedor
-        </button>
+        {canManage && (
+          <button
+            type="button"
+            onClick={() => navigate('/app/suppliers/new')}
+            className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
+          >
+            <Plus className="h-4 w-4" />
+            Novo fornecedor
+          </button>
+        )}
       </div>
 
       <TableFilters

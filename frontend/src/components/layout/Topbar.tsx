@@ -1,10 +1,12 @@
 import { useAuth } from '../../contexts/AuthContext';
 import { LogOut, User } from 'lucide-react';
 import { useTheme } from '../../contexts/ThemeContext';
+import { useNavigate } from 'react-router-dom';
 
 export function Topbar() {
     const { user, logout } = useAuth();
     const { companyName } = useTheme();
+    const navigate = useNavigate();
 
     return (
         <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-6 shrink-0">
@@ -13,7 +15,11 @@ export function Topbar() {
             </div>
 
             <div className="flex items-center gap-4">
-                <div className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2">
+                <button
+                    onClick={() => navigate('/app/settings')}
+                    className="flex items-center gap-3 rounded-xl border border-slate-200 bg-slate-50 px-3 py-2 hover:bg-slate-100 hover:border-slate-300 transition-colors cursor-pointer"
+                    title="Meu perfil"
+                >
                     <div className="flex h-9 w-9 items-center justify-center rounded-full bg-white text-slate-500 shadow-sm">
                         <User className="w-4 h-4" />
                     </div>
@@ -30,7 +36,7 @@ export function Topbar() {
                             {user?.roleName || 'USER'}
                         </span>
                     </div>
-                </div>
+                </button>
                 <button
                     onClick={logout}
                     className="p-2 text-slate-400 hover:text-slate-600 hover:bg-slate-100 rounded-full transition-colors"

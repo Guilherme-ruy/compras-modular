@@ -18,7 +18,9 @@
       "Bash(start chrome *)",
       "WebFetch(domain:localhost)",
       "Bash(grep -n \"per_page\\\\|sort_by\\\\|sort_order\\\\|dept_id\\\\|active_only\\\\|role_id\\\\|department_id\\\\|supplier_id\\\\|total_amount\\\\|unit_price\\\\|company_name\\\\|trade_name\\\\|contact_name\\\\|is_active\\\\|created_at\\\\|updated_at\\\\|step_order\\\\|approver_role_id\\\\|approver_user_id\\\\|buyer_user_ids\\\\|final_action\\\\|state_reg\\\\|zip_code\\\\|com_contact\\\\|fin_contact\" /c/Users/PC/Documents/SISTEMAS/compras-modular/frontend/src/pages/*.tsx)",
-      "Bash(grep -v \"//\\\\|state_region\\\\|//.*_\")"
+      "Bash(grep -v \"//\\\\|state_region\\\\|//.*_\")",
+      "Bash(grep -E \"\\\\.\\(json|yml|yaml|md\\)$|^d\")",
+      "Bash(npx prisma *)"
     ]
   }
 }

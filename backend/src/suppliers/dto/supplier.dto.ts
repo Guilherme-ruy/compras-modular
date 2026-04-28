@@ -1,5 +1,5 @@
 import {
-  IsString, IsOptional, IsEmail,
+  IsString, IsOptional, IsEmail, ValidateIf,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -8,10 +8,11 @@ export class CreateSupplierDto {
   @ApiPropertyOptional() @IsOptional() @IsString() tradeName?: string;
   @ApiProperty() @IsString() cnpj: string;
   @ApiPropertyOptional() @IsOptional() @IsString() stateReg?: string;
+  @ApiPropertyOptional() @IsOptional() @IsString() status?: string;
 
   @ApiPropertyOptional() @IsOptional() @IsString() contactName?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() phone?: string;
-  @ApiPropertyOptional() @IsOptional() @IsEmail() email?: string;
+  @ApiPropertyOptional() @IsOptional() @ValidateIf(o => !!o.email) @IsEmail() email?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() comContact?: string;
   @ApiPropertyOptional() @IsOptional() @IsString() finContact?: string;
 
@@ -28,6 +29,7 @@ export class CreateSupplierDto {
   @ApiPropertyOptional() @IsOptional() @IsString() pix?: string;
 
   @ApiPropertyOptional() @IsOptional() @IsString() notes?: string;
+  @ApiPropertyOptional() @IsOptional() contacts?: any[];
   @ApiPropertyOptional() @IsOptional() attachments?: any[];
 }
 

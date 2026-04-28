@@ -2,10 +2,12 @@ import {
   Injectable,
   UnauthorizedException,
   BadRequestException,
+  NotFoundException,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { PrismaService } from '../prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
+import * as crypto from 'node:crypto';
 
 export interface JwtPayload {
   sub: string;
@@ -30,7 +32,7 @@ export class AuthService {
 
     const user = await this.prisma.user.findUnique({
       where: { email: email.toLowerCase().trim() },
-      include: { 
+      include: {
         role: true,
         userDepartments: true,
       },
@@ -64,7 +66,105 @@ export class AuthService {
         email: user.email,
         role: user.role.name,
       },
-      permissions: {}, // Frontend espera este objeto
+      permissions: {},
     };
+  }
+
+  // ─────────────────────────────────────────────────────────
+  //  FLUXO 1: Esqueci minha senha (sem autenticação)
+  // ─────────────────────────────────────────────────────────
+
+  async forgotPassword(email: string): Promise<void> {
+    // Sempre retorna 200 — nunca revela se o email existe (evita enumeração)
+    const user = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+    });
+
+    if (!user || !user.isActive) return;
+
+    // Invalida tokens anteriores deste usuário
+    await this.prisma.passwordResetToken.deleteMany({
+      where: { userId: user.id },
+    });
+
+    // Gera token seguro: envia em claro, armazena SHA-256
+    const rawToken = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const expiresAt = new Date(Date.now() + 60 * 60 * 1000); // 1 hora
+
+    await this.prisma.passwordResetToken.create({
+      data: { userId: user.id, tokenHash, expiresAt },
+    });
+
+    // Em dev: loga o link no console. Em prod: integrar SMTP aqui.
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const resetLink = `${frontendUrl}/reset-password?token=${rawToken}`;
+
+    console.log(`\n🔐 [PASSWORD RESET] Link para ${user.email}:\n   ${resetLink}\n`);
+
+    // TODO (Iniciativa 2 - Email): enviar email com resetLink usando @nestjs-modules/mailer
+  }
+
+  async resetPassword(rawToken: string, newPassword: string): Promise<void> {
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+
+    const record = await this.prisma.passwordResetToken.findUnique({
+      where: { tokenHash },
+    });
+
+    if (!record) {
+      throw new BadRequestException('Token inválido ou expirado');
+    }
+
+    if (record.usedAt) {
+      throw new BadRequestException('Este link já foi utilizado');
+    }
+
+    if (record.expiresAt < new Date()) {
+      throw new BadRequestException('Token expirado. Solicite um novo link');
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    await this.prisma.$transaction([
+      this.prisma.user.update({
+        where: { id: record.userId },
+        data: { passwordHash },
+      }),
+      this.prisma.passwordResetToken.update({
+        where: { id: record.id },
+        data: { usedAt: new Date() },
+      }),
+    ]);
+  }
+
+  // ─────────────────────────────────────────────────────────
+  //  FLUXO 2: Trocar senha (autenticado)
+  // ─────────────────────────────────────────────────────────
+
+  async changePassword(
+    userId: string,
+    currentPassword: string,
+    newPassword: string,
+  ): Promise<void> {
+    const user = await this.prisma.user.findUnique({ where: { id: userId } });
+
+    if (!user) throw new NotFoundException('Usuário não encontrado');
+
+    const match = await bcrypt.compare(currentPassword, user.passwordHash);
+    if (!match) {
+      throw new BadRequestException('Senha atual incorreta');
+    }
+
+    if (currentPassword === newPassword) {
+      throw new BadRequestException('A nova senha deve ser diferente da atual');
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { passwordHash },
+    });
   }
 }

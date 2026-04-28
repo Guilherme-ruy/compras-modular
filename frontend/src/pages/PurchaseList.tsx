@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Building2, Eye, Plus, Search } from 'lucide-react';
 import api from '../services/api';
+import { useAuth } from '../contexts/AuthContext';
 import { PurchaseStatusColors, PurchaseStatusLabels } from '../constants/purchases';
 import { StandardTable, type TableColumn } from '../components/ui/table/StandardTable';
 import { TableFilters, TABLE_FILTER_CONTROL_CLASS } from '../components/ui/table/TableFilters';
@@ -46,6 +47,8 @@ const defaultSort: SortState = { key: 'number', direction: 'desc' };
 
 export function PurchaseList() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const canCreate = user?.roleName?.toUpperCase() !== 'VIEWER';
   const [rows, setRows] = useState<Purchase[]>([]);
   const [departments, setDepartments] = useState<Department[]>([]);
   const [loading, setLoading] = useState(true);
@@ -212,14 +215,16 @@ export function PurchaseList() {
           <p className="mt-1 text-sm text-slate-500">Acompanhe e gerencie todos os pedidos.</p>
         </div>
 
-        <button
-          type="button"
-          onClick={() => navigate('/app/purchases/new')}
-          className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
-        >
-          <Plus className="h-4 w-4" />
-          Novo pedido
-        </button>
+        {canCreate && (
+          <button
+            type="button"
+            onClick={() => navigate('/app/purchases/new')}
+            className="inline-flex h-10 items-center gap-2 rounded-lg bg-brand-600 px-4 text-sm font-semibold text-white transition-colors hover:bg-brand-700"
+          >
+            <Plus className="h-4 w-4" />
+            Novo pedido
+          </button>
+        )}
       </div>
 
       <TableFilters

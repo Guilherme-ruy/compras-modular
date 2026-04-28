@@ -9,6 +9,7 @@ export class PurchaseItemDto {
   @ApiPropertyOptional() @IsOptional() @IsString() link?: string;
   @ApiProperty() @IsNumber() @Min(0) quantity: number;
   @ApiProperty() @IsNumber() @Min(0) unitPrice: number;
+  @ApiPropertyOptional() @IsOptional() @IsString() categoryId?: string;
 }
 
 export class CreatePurchaseDto {

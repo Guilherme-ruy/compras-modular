@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ConflictException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, ConflictException, BadRequestException, ForbiddenException } from '@nestjs/common';
 import { SuppliersRepository } from './suppliers.repository';
 import { CreateSupplierDto, UpdateSupplierDto } from './dto/supplier.dto';
 
@@ -32,12 +32,16 @@ export class SuppliersService {
     return supplier;
   }
 
-  create(dto: CreateSupplierDto) {
+  create(roleName: string, dto: CreateSupplierDto) {
+    if (roleName.toUpperCase() === 'VIEWER') {
+      throw new ForbiddenException('Visualizadores não têm permissão para cadastrar fornecedores');
+    }
     return this.suppliersRepository.create({
       companyName: dto.companyName,
       tradeName: dto.tradeName ?? '',
       cnpj: dto.cnpj,
       stateReg: dto.stateReg ?? '',
+      status: dto.status ?? 'ACTIVE',
       contactName: dto.contactName ?? '',
       phone: dto.phone ?? '',
       email: dto.email ?? '',
@@ -54,16 +58,23 @@ export class SuppliersService {
       account: dto.account ?? '',
       pix: dto.pix ?? '',
       notes: dto.notes ?? '',
+      contacts: dto.contacts ?? [],
       attachments: dto.attachments ?? [],
     });
   }
 
-  async update(id: string, dto: UpdateSupplierDto) {
+  async update(id: string, roleName: string, dto: UpdateSupplierDto) {
+    if (roleName.toUpperCase() === 'VIEWER') {
+      throw new ForbiddenException('Visualizadores não têm permissão para editar fornecedores');
+    }
     await this.findById(id);
     return this.suppliersRepository.update(id, { ...dto });
   }
 
-  async updateStatus(id: string, status: string) {
+  async updateStatus(id: string, roleName: string, status: string) {
+    if (roleName.toUpperCase() === 'VIEWER') {
+      throw new ForbiddenException('Visualizadores não têm permissão para alterar o status de fornecedores');
+    }
     if (!VALID_STATUSES.includes(status)) {
       throw new BadRequestException(`Status inválido. Use: ${VALID_STATUSES.join(', ')}`);
     }
@@ -71,7 +82,10 @@ export class SuppliersService {
     return this.suppliersRepository.updateStatus(id, status);
   }
 
-  async remove(id: string) {
+  async remove(id: string, roleName: string) {
+    if (roleName.toUpperCase() === 'VIEWER') {
+      throw new ForbiddenException('Visualizadores não têm permissão para remover fornecedores');
+    }
     await this.findById(id);
     return this.suppliersRepository.softDelete(id);
   }

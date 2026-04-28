@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, ShoppingCart, Settings, Users, Building2, GitMerge, Store } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, Settings, Users, Building2, GitMerge, Store, Layers } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -13,7 +13,8 @@ export function Sidebar() {
         ...(['SUPERADMIN', 'ADMIN'].includes(user?.roleName ?? '') ? [
             { path: '/app/workflows', icon: GitMerge, label: 'Fluxos (Regras)' },
             { path: '/app/users', icon: Users, label: 'Usuários Interno' },
-            { path: '/app/departments', icon: Building2, label: 'Departamentos' }
+            { path: '/app/departments', icon: Building2, label: 'Departamentos' },
+            { path: '/app/categories', icon: Layers, label: 'Categorias' },
         ] : []),
         { path: '/app/settings', icon: Settings, label: 'Configurações' },
     ];

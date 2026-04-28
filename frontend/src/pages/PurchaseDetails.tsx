@@ -14,6 +14,7 @@ type PurchaseItem = {
     link?: string;
     quantity: number;
     unitPrice: number;
+    category?: { id: string; name: string; parent?: { id: string; name: string } | null } | null;
 };
 
 type PurchaseApproval = {
@@ -75,6 +76,7 @@ export function PurchaseDetails() {
     const [comments, setComments] = useState('');
     const [files, setFiles] = useState<{ id: string; name: string; data: string; size: number }[]>([]);
 	const [feedbackMsg, setFeedbackMsg] = useState<{type: 'success'|'error', text: string} | null>(null);
+    const [confirmingSubmit, setConfirmingSubmit] = useState(false);
 
     useEffect(() => {
         fetchDetails();
@@ -341,22 +343,30 @@ export function PurchaseDetails() {
                         </div>
                     )}
 
-                    {/* Metadata Section */}
-                    <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
-                        <h2 className="text-lg font-semibold text-slate-800 mb-4 border-b border-slate-100 pb-2">Informações Específicas</h2>
-                        {data.metadata && Object.keys(data.metadata).length > 0 ? (
-                            <div className="grid grid-cols-2 gap-4">
-                                {Object.entries(data.metadata).map(([key, value]) => (
-                                    <div key={key}>
-                                        <p className="text-xs text-slate-500 uppercase font-medium">{key}</p>
-                                        <p className="text-sm font-medium text-slate-800">{String(value)}</p>
+                    {/* Priority & Justification */}
+                    {(data.metadata?.prioridade || data.metadata?.justification || data.metadata?.justificativa) && (
+                        <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+                            <h2 className="text-lg font-semibold text-slate-800 mb-4 border-b border-slate-100 pb-2">Informações do Pedido</h2>
+                            <div className="space-y-4">
+                                {data.metadata?.prioridade && (
+                                    <div>
+                                        <p className="text-xs text-slate-500 uppercase font-medium mb-1.5">Prioridade</p>
+                                        <span className={`inline-flex px-3 py-1 rounded-full text-xs font-bold ${priorityBadgeClass(data.metadata.prioridade)}`}>
+                                            {data.metadata.prioridade.charAt(0) + data.metadata.prioridade.slice(1).toLowerCase()}
+                                        </span>
                                     </div>
-                                ))}
+                                )}
+                                {(data.metadata?.justification || data.metadata?.justificativa) && (
+                                    <div>
+                                        <p className="text-xs text-slate-500 uppercase font-medium mb-1.5">Justificativa</p>
+                                        <p className="text-sm text-slate-700 bg-slate-50 rounded-md px-3 py-2 border border-slate-100 whitespace-pre-wrap">
+                                            {data.metadata.justification || data.metadata.justificativa}
+                                        </p>
+                                    </div>
+                                )}
                             </div>
-                        ) : (
-                            <p className="text-sm text-slate-500">Nenhum dado extra informado.</p>
-                        )}
-                    </div>
+                        </div>
+                    )}
 
                     {/* Items Section */}
                     <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
@@ -364,16 +374,18 @@ export function PurchaseDetails() {
                             <h2 className="text-lg font-semibold text-slate-800">Itens Solicitados</h2>
                         </div>
                         <div className="overflow-x-auto">
-                            <table className="w-full min-w-[640px] table-fixed text-left text-sm text-slate-700 md:min-w-[700px]">
+                            <table className="w-full min-w-[680px] table-fixed text-left text-sm text-slate-700">
                                 <colgroup>
                                     <col />
-                                    <col style={{ width: '5.5rem' }} />
+                                    <col style={{ width: '9rem' }} />
+                                    <col style={{ width: '5rem' }} />
                                     <col style={{ width: '8.5rem' }} />
                                     <col style={{ width: '9rem' }} />
                                 </colgroup>
                                 <thead>
                                     <tr className="border-b border-slate-200 bg-slate-50 text-xs uppercase tracking-wide text-slate-500">
                                     <th className="px-5 py-3 font-semibold">Descrição</th>
+                                    <th className="px-3 py-3 font-semibold">Categoria</th>
                                     <th className="px-3 py-3 font-semibold whitespace-nowrap">Qtd</th>
                                     <th className="px-3 py-3 font-semibold whitespace-nowrap">Unidade</th>
                                     <th className="px-4 py-3 font-semibold text-right whitespace-nowrap sm:px-5">Total</th>
@@ -388,6 +400,18 @@ export function PurchaseDetails() {
                                                 <a href={item.link.startsWith('http') ? item.link : `https://${item.link}`} target="_blank" rel="noopener noreferrer" className="inline-block mt-0.5 max-w-full truncate text-xs text-brand-600 hover:text-brand-800 underline">
                                                     Ver link de referência
                                                 </a>
+                                            )}
+                                        </td>
+                                        <td className="px-3 py-3.5">
+                                            {item.category ? (
+                                                <div>
+                                                    {item.category.parent && (
+                                                        <span className="block text-xs text-slate-400">{item.category.parent.name}</span>
+                                                    )}
+                                                    <span className="text-xs font-medium text-slate-600">{item.category.name}</span>
+                                                </div>
+                                            ) : (
+                                                <span className="text-xs text-slate-400">—</span>
                                             )}
                                         </td>
                                         <td className="px-3 py-3.5 text-slate-600 whitespace-nowrap">{item.quantity}</td>
@@ -485,13 +509,36 @@ export function PurchaseDetails() {
 
                         <div className="mt-6 space-y-3">
                             {data.permissions?.canSubmit && (
-                                <button
-                                    onClick={() => handleWorkflowAction('submit')}
-                                    disabled={actionLoading}
-                                    className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-md transition-colors disabled:opacity-50"
-                                >
-                                    Enviar para Aprovação
-                                </button>
+                                confirmingSubmit ? (
+                                    <div className="rounded-lg border border-blue-200 bg-blue-50 p-3 space-y-2">
+                                        <p className="text-sm font-medium text-blue-900">Enviar este pedido para aprovação?</p>
+                                        <p className="text-xs text-blue-700">Após o envio, não será mais possível editar o rascunho.</p>
+                                        <div className="flex gap-2 pt-1">
+                                            <button
+                                                onClick={() => { setConfirmingSubmit(false); handleWorkflowAction('submit'); }}
+                                                disabled={actionLoading}
+                                                className="flex-1 bg-blue-600 hover:bg-blue-700 text-white text-sm font-medium py-2 rounded-md transition-colors disabled:opacity-50"
+                                            >
+                                                Sim, enviar
+                                            </button>
+                                            <button
+                                                onClick={() => setConfirmingSubmit(false)}
+                                                disabled={actionLoading}
+                                                className="flex-1 bg-white hover:bg-slate-50 text-slate-700 text-sm font-medium py-2 rounded-md border border-slate-300 transition-colors disabled:opacity-50"
+                                            >
+                                                Cancelar
+                                            </button>
+                                        </div>
+                                    </div>
+                                ) : (
+                                    <button
+                                        onClick={() => setConfirmingSubmit(true)}
+                                        disabled={actionLoading}
+                                        className="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 rounded-md transition-colors disabled:opacity-50"
+                                    >
+                                        Enviar para Aprovação
+                                    </button>
+                                )
                             )}
 
                             {(isPending || isPendingClosing || isCompleted) && (
@@ -654,6 +701,16 @@ export function PurchaseDetails() {
             </div>
         </div>
     );
+}
+
+function priorityBadgeClass(priority: string) {
+    switch (priority.toUpperCase()) {
+        case 'BAIXA': return 'bg-slate-100 text-slate-700';
+        case 'MEDIA': return 'bg-blue-100 text-blue-700';
+        case 'ALTA': return 'bg-amber-100 text-amber-700';
+        case 'URGENTE': return 'bg-red-100 text-red-700';
+        default: return 'bg-slate-100 text-slate-700';
+    }
 }
 
 function readFileAsDataUrl(file: File) {

@@ -94,6 +94,10 @@ export class PurchasesService {
   // ── CREATE ────────────────────────────────────────────────────────────────
 
   async create(userId: string, roleName: string, dto: CreatePurchaseDto) {
+    if (roleName.toUpperCase() === 'VIEWER') {
+      throw new ForbiddenException('Visualizadores não têm permissão para criar pedidos de compra');
+    }
+
     const dept = await this.departmentsRepository.findById(dto.departmentId);
     if (!dept.isActive) {
       throw new BadRequestException('Departamento inativo não aceita novos pedidos');
@@ -125,8 +129,6 @@ export class PurchasesService {
     const metadata = {
       ...(dto.metadata || {}),
       ...(dto.justification && { justification: dto.justification }),
-      // Ensure justificativa (portuguese) is also there for compatibility with old code if any
-      ...(dto.justification && { justificativa: dto.justification }),
     };
 
     return this.purchasesRepository.create({
@@ -135,13 +137,23 @@ export class PurchasesService {
       supplierId: dto.supplierId,
       totalAmount: dto.totalAmount,
       metadata,
-      items: dto.items,
+      items: dto.items.map((i) => ({
+        description: i.description,
+        link: i.link,
+        quantity: i.quantity,
+        unitPrice: i.unitPrice,
+        categoryId: i.categoryId,
+      })),
     });
   }
 
   // ── UPDATE ────────────────────────────────────────────────────────────────
 
   async update(purchaseId: string, userId: string, roleName: string, dto: UpdatePurchaseDto) {
+    if (roleName.toUpperCase() === 'VIEWER') {
+      throw new ForbiddenException('Visualizadores não têm permissão para editar pedidos de compra');
+    }
+
     const purchase = await this.purchasesRepository.findById(purchaseId);
     if (!purchase) throw new NotFoundException('Pedido não encontrado');
     if (purchase.status !== 'DRAFT') {
@@ -173,13 +185,23 @@ export class PurchasesService {
       supplierId: dto.supplierId ?? null,
       totalAmount: dto.totalAmount,
       metadata: dto.metadata,
-      items: dto.items,
+      items: dto.items.map((i) => ({
+        description: i.description,
+        link: i.link,
+        quantity: i.quantity,
+        unitPrice: i.unitPrice,
+        categoryId: i.categoryId,
+      })),
     });
   }
 
   // ── WORKFLOW ACTIONS ──────────────────────────────────────────────────────
 
   async submit(purchaseId: string, userId: string, roleName: string) {
+    if (roleName.toUpperCase() === 'VIEWER') {
+      throw new ForbiddenException('Visualizadores não têm permissão para submeter pedidos de compra');
+    }
+
     const purchase = await this.purchasesRepository.findById(purchaseId);
     if (!purchase) throw new NotFoundException('Pedido não encontrado');
     if (purchase.status !== 'DRAFT') {
@@ -361,8 +383,6 @@ export class PurchasesService {
   }
 
   private async buildPermissions(purchase: any, userId: string, roleName: string) {
-    const isAdmin = ['SUPERADMIN', 'ADMIN'].includes((roleName || '').toUpperCase());
-
     const permissions = {
       canEdit: false,
       canSubmit: false,
@@ -371,6 +391,10 @@ export class PurchasesService {
       canClose: false,
       canUploadPostCloseDocuments: false,
     };
+
+    if ((roleName || '').toUpperCase() === 'VIEWER') return permissions;
+
+    const isAdmin = ['SUPERADMIN', 'ADMIN'].includes((roleName || '').toUpperCase());
 
     const isOwner = purchase.requesterId === userId;
 

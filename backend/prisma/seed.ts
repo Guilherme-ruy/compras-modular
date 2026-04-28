@@ -51,6 +51,39 @@ async function main() {
   });
   console.log(`  ✔ Departments: ${adminDept.name}, ${tiDept.name}`);
 
+  // ── Categories ─────────────────────────────────────────────────────────
+  const categoryDefs = [
+    { id: 'c0000000-0000-0000-0000-000000000001', name: 'Tecnologia da Informação', parentId: null },
+    { id: 'c0000000-0000-0000-0000-000000000002', name: 'Hardware',                  parentId: 'c0000000-0000-0000-0000-000000000001' },
+    { id: 'c0000000-0000-0000-0000-000000000003', name: 'Software / Licenças',        parentId: 'c0000000-0000-0000-0000-000000000001' },
+    { id: 'c0000000-0000-0000-0000-000000000004', name: 'Infraestrutura de Rede',     parentId: 'c0000000-0000-0000-0000-000000000001' },
+    { id: 'c0000000-0000-0000-0000-000000000005', name: 'Material de Escritório',     parentId: null },
+    { id: 'c0000000-0000-0000-0000-000000000006', name: 'Serviços',                   parentId: null },
+    { id: 'c0000000-0000-0000-0000-000000000007', name: 'Manutenção',                 parentId: 'c0000000-0000-0000-0000-000000000006' },
+    { id: 'c0000000-0000-0000-0000-000000000008', name: 'Consultoria',                parentId: 'c0000000-0000-0000-0000-000000000006' },
+    { id: 'c0000000-0000-0000-0000-000000000009', name: 'Terceirização',              parentId: 'c0000000-0000-0000-0000-000000000006' },
+    { id: 'c0000000-0000-0000-0000-000000000010', name: 'Marketing e Comunicação',    parentId: null },
+    { id: 'c0000000-0000-0000-0000-000000000011', name: 'Infraestrutura / Instalações', parentId: null },
+    { id: 'c0000000-0000-0000-0000-000000000012', name: 'Recursos Humanos',           parentId: null },
+    { id: 'c0000000-0000-0000-0000-000000000013', name: 'Viagens e Despesas',         parentId: null },
+    { id: 'c0000000-0000-0000-0000-000000000014', name: 'Outros',                     parentId: null },
+  ];
+
+  // Upsert parents first, then children
+  for (const cat of categoryDefs) {
+    await prisma.category.upsert({
+      where: { id: cat.id },
+      update: {},
+      create: {
+        id: cat.id,
+        name: cat.name,
+        isActive: true,
+        ...(cat.parentId ? { parentId: cat.parentId } : {}),
+      },
+    });
+  }
+  console.log(`  ✔ Categories: ${categoryDefs.length} cadastradas`);
+
   // ── Helper: create user + link departments ─────────────────────────────
   async function upsertUser(
     email: string,
