@@ -24,7 +24,8 @@ import { Profile } from './pages/Profile';
 
 // Lazy loaded features (Suspense compliance)
 const Dashboard = lazy(() => import('./features/dashboard/components/Dashboard'));
-const Settings = lazy(() => import('./features/settings/components/Settings'));
+const Settings  = lazy(() => import('./features/settings/components/Settings'));
+const Reports   = lazy(() => import('./features/reports/components/Reports'));
 
 import type { ReactNode } from 'react';
 
@@ -75,6 +76,11 @@ export default function App() {
               <Route path="categories" element={<CategoryList />} />
               <Route path="categories/new" element={<CategoryForm />} />
               <Route path="categories/:id/edit" element={<CategoryForm />} />
+              <Route path="relatorios" element={
+                <SuspenseLoader>
+                  <Reports />
+                </SuspenseLoader>
+              } />
               <Route path="profile" element={<Profile />} />
               <Route path="settings" element={
                 <SuspenseLoader>

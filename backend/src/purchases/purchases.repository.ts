@@ -26,6 +26,9 @@ export class PurchasesRepository {
     requesterId?: string;
     departmentIds?: string[];
     departmentFilter?: string;
+    supplierId?: string;
+    startDate?: string;
+    endDate?: string;
     status?: string;
     search?: string;
     page: number;
@@ -36,12 +39,20 @@ export class PurchasesRepository {
   }) {
     const {
       requesterId, departmentIds, departmentFilter,
+      supplierId, startDate, endDate,
       status, search, page, perPage,
       sortBy = 'createdAt', sortOrder = 'desc', isAdmin,
     } = params;
 
     const where: Prisma.PurchaseWhereInput = {};
     if (status) where.status = status;
+    if (supplierId) where.supplierId = supplierId;
+    if (startDate || endDate) {
+      where.createdAt = {
+        ...(startDate ? { gte: new Date(startDate) } : {}),
+        ...(endDate ? { lte: new Date(`${endDate}T23:59:59.999Z`) } : {}),
+      };
+    }
     if (search) {
       where.OR = [
         { metadata: { path: ['notes'], string_contains: search } },
@@ -171,6 +182,61 @@ export class PurchasesRepository {
         currentStepId,
         ...(workflowId !== undefined && { workflowId }),
       },
+    });
+  }
+
+  async findAllForExport(params: {
+    requesterId?: string;
+    departmentIds?: string[];
+    departmentFilter?: string;
+    supplierId?: string;
+    startDate?: string;
+    endDate?: string;
+    status?: string;
+    search?: string;
+    isAdmin?: boolean;
+  }) {
+    const {
+      requesterId, departmentIds, departmentFilter,
+      supplierId, startDate, endDate, status, search, isAdmin,
+    } = params;
+
+    const where: Prisma.PurchaseWhereInput = {};
+    if (status) where.status = status;
+    if (supplierId) where.supplierId = supplierId;
+    if (startDate || endDate) {
+      where.createdAt = {
+        ...(startDate ? { gte: new Date(startDate) } : {}),
+        ...(endDate ? { lte: new Date(`${endDate}T23:59:59.999Z`) } : {}),
+      };
+    }
+    if (departmentFilter) where.departmentId = departmentFilter;
+
+    const scopeOr = !isAdmin && requesterId && departmentIds
+      ? [{ requesterId }, { departmentId: { in: departmentIds } }]
+      : null;
+
+    if (search) {
+      const searchClause = { metadata: { path: ['notes'], string_contains: search } };
+      if (scopeOr) {
+        where.AND = [{ OR: [searchClause] }, { OR: scopeOr }];
+      } else {
+        where.OR = [searchClause];
+      }
+    } else if (scopeOr) {
+      where.OR = scopeOr;
+    }
+
+    return this.prisma.purchase.findMany({
+      where,
+      include: {
+        ...PURCHASE_INCLUDE,
+        approvals: {
+          include: { actor: true, step: true },
+          orderBy: { actedAt: 'asc' },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
     });
   }
 
