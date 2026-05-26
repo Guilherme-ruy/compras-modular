@@ -2,8 +2,9 @@ import { useState } from 'react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { useTheme } from '../../../contexts/ThemeContext';
 import { settingsApi } from '../api/settingsApi';
+import api from '../../../services/api';
 import { PRESET_COLORS, type ThemeColors } from '../types';
-import { CheckCircle2 } from 'lucide-react';
+import { CheckCircle2, Upload } from 'lucide-react';
 
 export default function ThemeTab({ initialColors }: { initialColors?: ThemeColors }) {
     const { user } = useAuth();
@@ -13,11 +14,12 @@ export default function ThemeTab({ initialColors }: { initialColors?: ThemeColor
     const [selectedColorHex, setSelectedColorHex] = useState<string>(
         initialColors ? initialColors[600] : PRESET_COLORS[0].hex
     );
+    const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [isSaving, setIsSaving] = useState(false);
     const [message, setMessage] = useState<{type: 'success' | 'error', text: string} | null>(null);
 
     // Only SUPERADMIN/ADMIN can see this tab (safeguard)
-    const isAdmin = user?.roleName === 'SUPERADMIN' || user?.roleName === 'ADMIN';
+    const isAdmin = ['SUPERADMIN', 'TENANT_ADMIN', 'ADMIN', 'Administrador'].includes(user?.roleName ?? '');
     if (!isAdmin) {
         return (
             <div className="p-8 text-center text-slate-500">
@@ -46,6 +48,35 @@ export default function ThemeTab({ initialColors }: { initialColors?: ThemeColor
                 ? (errorData.message || JSON.stringify(errorData)) 
                 : (errorData || 'Erro ao salvar tema.');
             setMessage({ type: 'error', text: errorText });
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    const handleSaveLogo = async () => {
+        if (!selectedFile) return;
+        setIsSaving(true);
+        setMessage(null);
+        try {
+            // Upload to MinIO
+            const formData = new FormData();
+            formData.append('file', selectedFile);
+            
+            const uploadRes = await api.post('/uploads', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            
+            const uploadedUrl = uploadRes.data.url;
+
+            // Save Theme Config
+            await settingsApi.updateSystemSettings({
+                themeConfig: { logoUrl: uploadedUrl }
+            });
+            
+            setMessage({ type: 'success', text: 'Logo atualizada com sucesso! Recarregue a página para ver.' });
+            setSelectedFile(null);
+        } catch (err: any) {
+            setMessage({ type: 'error', text: 'Erro ao salvar a logo.' });
         } finally {
             setIsSaving(false);
         }
@@ -100,6 +131,32 @@ export default function ThemeTab({ initialColors }: { initialColors?: ThemeColor
                         </button>
                     )
                 })}
+            </div>
+            <div className="mt-12 pt-8 border-t border-slate-100">
+                <h3 className="text-lg font-bold text-slate-800">Sua Marca (Logo)</h3>
+                <p className="text-sm text-slate-500 mt-1 mb-4">
+                    Faça upload de uma imagem (PNG/JPG) para substituir o logo padrão do sistema.
+                </p>
+                <div className="flex flex-col sm:flex-row gap-3 max-w-md items-start sm:items-center">
+                    <input 
+                        type="file"
+                        accept="image/png, image/jpeg, image/jpg, image/svg+xml"
+                        onChange={(e) => setSelectedFile(e.target.files?.[0] || null)}
+                        className="block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-brand-50 file:text-brand-700 hover:file:bg-brand-100 transition-all cursor-pointer"
+                    />
+                    <button 
+                        onClick={handleSaveLogo}
+                        disabled={isSaving || !selectedFile}
+                        className="flex items-center gap-2 px-4 py-2 bg-brand-600 text-white rounded-lg hover:bg-brand-700 disabled:opacity-50 font-medium transition-colors whitespace-nowrap"
+                    >
+                        {isSaving ? (
+                            <span className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                        ) : (
+                            <Upload size={16} />
+                        )}
+                        Enviar Logo
+                    </button>
+                </div>
             </div>
             
         </div>

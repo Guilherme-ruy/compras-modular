@@ -48,14 +48,14 @@ export class WorkflowsController {
   }
 
   @Post()
-  @Roles('SUPERADMIN')
+  @Roles('SUPERADMIN', 'TENANT_ADMIN', 'ADMIN', 'Administrador')
   @ApiOperation({ summary: 'Criar fluxo de aprovação' })
   create(@Body() dto: CreateWorkflowDto) {
     return this.workflowsService.create(dto);
   }
 
   @Put(':id')
-  @Roles('SUPERADMIN')
+  @Roles('SUPERADMIN', 'TENANT_ADMIN', 'ADMIN', 'Administrador')
   @ApiOperation({ summary: 'Atualizar fluxo (cria nova versão)' })
   update(
     @Param('id', ParseUUIDPipe) id: string,
@@ -65,7 +65,7 @@ export class WorkflowsController {
   }
 
   @Delete(':id')
-  @Roles('SUPERADMIN')
+  @Roles('SUPERADMIN', 'TENANT_ADMIN', 'ADMIN', 'Administrador')
   @ApiOperation({ summary: 'Remover fluxo de aprovação' })
   delete(@Param('id', ParseUUIDPipe) id: string) {
     return this.workflowsService.delete(id);

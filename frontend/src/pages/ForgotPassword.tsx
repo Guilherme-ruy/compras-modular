@@ -27,7 +27,11 @@ export function ForgotPassword() {
     };
 
     return (
-        <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6">
+        <div className="min-h-screen flex items-center justify-center bg-slate-50 p-6 relative">
+            <a href="https://compras.hqa.com.br" className="absolute top-8 right-8 flex items-center gap-1.5 text-sm font-medium text-slate-500 hover:text-brand-600 transition-colors hidden md:flex">
+                <ArrowLeft size={16} />
+                Voltar para o site
+            </a>
             <div className="w-full max-w-md animate-fade-in-up">
                 {/* Brand */}
                 <div className="flex items-center gap-2.5 mb-8 justify-center">

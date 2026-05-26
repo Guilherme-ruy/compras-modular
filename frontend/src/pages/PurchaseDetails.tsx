@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Check, X, ShieldAlert, FileText, Trash2, Upload } from 'lucide-react';
 import api from '../services/api';
-import { useAuth } from '../contexts/AuthContext';
+import { uploadService } from '../services/upload.service';
 import { PurchaseStatusLabels, PurchaseStatusColors } from '../constants/purchases';
 
 const MAX_ATTACHMENTS = 5;
@@ -68,13 +68,14 @@ type Purchase = {
 export function PurchaseDetails() {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
-    const { user } = useAuth();
+
     const fileInputRef = useRef<HTMLInputElement | null>(null);
     const [data, setData] = useState<Purchase | null>(null);
     const [loading, setLoading] = useState(true);
     const [actionLoading, setActionLoading] = useState(false);
     const [comments, setComments] = useState('');
-    const [files, setFiles] = useState<{ id: string; name: string; data: string; size: number }[]>([]);
+    const [files, setFiles] = useState<{ id: string; name: string; url: string; size: number }[]>([]);
+    const [isUploading, setIsUploading] = useState(false);
 	const [feedbackMsg, setFeedbackMsg] = useState<{type: 'success'|'error', text: string} | null>(null);
     const [confirmingSubmit, setConfirmingSubmit] = useState(false);
 
@@ -138,19 +139,29 @@ export function PurchaseDetails() {
             return;
         }
 
-        const encodedFiles = await Promise.all(
-            validFiles.map(async (file) => ({
-                id: `${file.name}-${file.lastModified}-${Math.random().toString(36).slice(2, 8)}`,
-                name: file.name,
-                size: file.size,
-                data: await readFileAsDataUrl(file),
-            })),
-        );
+        setIsUploading(true);
+        try {
+            const uploadedFiles = await Promise.all(
+                validFiles.map(async (file) => {
+                    const res = await uploadService.uploadFile(file);
+                    return {
+                        id: res.key,
+                        name: file.name,
+                        size: file.size,
+                        url: res.url,
+                    };
+                })
+            );
 
-        setFiles((previous) => [...previous, ...encodedFiles]);
-
-        if (fileInputRef.current) {
-            fileInputRef.current.value = '';
+            setFiles((previous) => [...previous, ...uploadedFiles]);
+        } catch (error) {
+            console.error('Upload falhou:', error);
+            setFeedbackMsg({ type: 'error', text: 'Ocorreu um erro ao fazer o upload dos arquivos. Tente novamente.' });
+        } finally {
+            setIsUploading(false);
+            if (fileInputRef.current) {
+                fileInputRef.current.value = '';
+            }
         }
     };
 
@@ -221,7 +232,7 @@ export function PurchaseDetails() {
         try {
             setActionLoading(true);
             setFeedbackMsg(null);
-            const attachments = files.map(({ name, data }) => ({ name, data }));
+            const attachments = files.map(({ name, url, size }) => ({ name, url, size }));
             if (action === 'submit') {
                 await api.post(`/purchases/${id}/submit`);
             } else if (action === 'close') {
@@ -250,7 +261,7 @@ export function PurchaseDetails() {
     if (loading) return <div className="p-8 text-center text-slate-500">Carregando detalhes...</div>;
     if (!data) return <div className="p-8 text-center text-red-500">Pedido não encontrado.</div>;
 
-    const isDraft = data.status === "DRAFT";
+
     const isPending = data.status === "PENDING_APPROVAL";
     const isPendingClosing = data.status === "PENDING_CLOSING";
     const isCompleted = data.status === "COMPLETED";
@@ -601,7 +612,7 @@ export function PurchaseDetails() {
                                                             ref={fileInputRef}
                                                             type="file"
                                                             multiple
-                                                            disabled={!canInteractWithPanel || actionLoading || files.length >= MAX_ATTACHMENTS}
+                                                            disabled={!canInteractWithPanel || actionLoading || isUploading || files.length >= MAX_ATTACHMENTS}
                                                             onChange={handleFileChange}
                                                             className="mt-3 block w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-white file:text-brand-700 hover:file:bg-slate-100 disabled:cursor-not-allowed"
                                                         />
@@ -713,14 +724,6 @@ function priorityBadgeClass(priority: string) {
     }
 }
 
-function readFileAsDataUrl(file: File) {
-    return new Promise<string>((resolve, reject) => {
-        const reader = new FileReader();
-        reader.onload = (event) => resolve((event.target?.result as string) || '');
-        reader.onerror = () => reject(new Error(`Falha ao ler o arquivo ${file.name}.`));
-        reader.readAsDataURL(file);
-    });
-}
 
 function formatFileSize(size: number) {
     if (size < 1024) return `${size} B`;

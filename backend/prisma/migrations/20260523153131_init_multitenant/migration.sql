@@ -1,6 +1,21 @@
 -- CreateTable
+CREATE TABLE "tenants" (
+    "id" UUID NOT NULL,
+    "name" VARCHAR(255) NOT NULL,
+    "stripe_customer_id" TEXT,
+    "stripe_subscription_id" TEXT,
+    "subscription_status" TEXT NOT NULL DEFAULT 'trialing',
+    "trial_ends_at" TIMESTAMP(3),
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL,
+
+    CONSTRAINT "tenants_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "system_settings" (
     "id" SERIAL NOT NULL,
+    "tenant_id" UUID NOT NULL,
     "company_name" VARCHAR(255) NOT NULL,
     "document" VARCHAR(50) NOT NULL DEFAULT '',
     "theme_config" JSONB NOT NULL DEFAULT '{}',
@@ -20,6 +35,7 @@ CREATE TABLE "roles" (
 -- CreateTable
 CREATE TABLE "departments" (
     "id" UUID NOT NULL,
+    "tenant_id" UUID NOT NULL,
     "name" VARCHAR(255) NOT NULL,
     "parent_id" UUID,
     "is_active" BOOLEAN NOT NULL DEFAULT true,
@@ -32,10 +48,12 @@ CREATE TABLE "departments" (
 -- CreateTable
 CREATE TABLE "users" (
     "id" UUID NOT NULL,
+    "tenant_id" UUID NOT NULL,
     "role_id" UUID NOT NULL,
     "name" VARCHAR(255) NOT NULL,
     "email" VARCHAR(255) NOT NULL,
     "password_hash" VARCHAR(255) NOT NULL,
+    "phone" VARCHAR(20) NOT NULL DEFAULT '',
     "is_active" BOOLEAN NOT NULL DEFAULT true,
 
     CONSTRAINT "users_pkey" PRIMARY KEY ("id")
@@ -50,8 +68,32 @@ CREATE TABLE "user_departments" (
 );
 
 -- CreateTable
+CREATE TABLE "password_reset_tokens" (
+    "id" UUID NOT NULL,
+    "user_id" UUID NOT NULL,
+    "token_hash" VARCHAR(255) NOT NULL,
+    "expires_at" TIMESTAMP(3) NOT NULL,
+    "used_at" TIMESTAMP(3),
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "password_reset_tokens_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "categories" (
+    "id" UUID NOT NULL,
+    "tenant_id" UUID NOT NULL,
+    "name" VARCHAR(255) NOT NULL,
+    "parent_id" UUID,
+    "is_active" BOOLEAN NOT NULL DEFAULT true,
+
+    CONSTRAINT "categories_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "suppliers" (
     "id" UUID NOT NULL,
+    "tenant_id" UUID NOT NULL,
     "company_name" VARCHAR(255) NOT NULL,
     "trade_name" VARCHAR(255) NOT NULL DEFAULT '',
     "cnpj" VARCHAR(20) NOT NULL,
@@ -73,6 +115,7 @@ CREATE TABLE "suppliers" (
     "account" VARCHAR(50) NOT NULL DEFAULT '',
     "pix" VARCHAR(255) NOT NULL DEFAULT '',
     "notes" TEXT NOT NULL DEFAULT '',
+    "contacts" JSONB NOT NULL DEFAULT '[]',
     "attachments" JSONB NOT NULL DEFAULT '[]',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMP(3) NOT NULL,
@@ -85,12 +128,14 @@ CREATE TABLE "suppliers" (
 CREATE TABLE "purchases" (
     "id" UUID NOT NULL,
     "number" SERIAL NOT NULL,
+    "tenant_id" UUID NOT NULL,
     "requester_id" UUID NOT NULL,
     "department_id" UUID NOT NULL,
     "workflow_id" UUID,
     "supplier_id" UUID,
     "total_amount" DECIMAL(10,2) NOT NULL,
     "status" VARCHAR(50) NOT NULL,
+    "purchase_type" VARCHAR(10) NOT NULL DEFAULT 'DIRECT',
     "current_step_id" UUID,
     "metadata" JSONB NOT NULL DEFAULT '{}',
     "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -100,9 +145,37 @@ CREATE TABLE "purchases" (
 );
 
 -- CreateTable
+CREATE TABLE "quotes" (
+    "id" UUID NOT NULL,
+    "purchase_id" UUID NOT NULL,
+    "supplier_id" UUID NOT NULL,
+    "submitted_by" UUID NOT NULL,
+    "total_amount" DECIMAL(10,2) NOT NULL,
+    "notes" TEXT NOT NULL DEFAULT '',
+    "attachments" JSONB NOT NULL DEFAULT '[]',
+    "is_selected" BOOLEAN NOT NULL DEFAULT false,
+    "status" VARCHAR(20) NOT NULL DEFAULT 'DRAFT',
+    "submitted_at" TIMESTAMP(3),
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+    CONSTRAINT "quotes_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "quote_items" (
+    "id" UUID NOT NULL,
+    "quote_id" UUID NOT NULL,
+    "purchase_item_id" UUID NOT NULL,
+    "unit_price" DECIMAL(10,2) NOT NULL,
+
+    CONSTRAINT "quote_items_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "purchase_items" (
     "id" UUID NOT NULL,
     "purchase_id" UUID NOT NULL,
+    "category_id" UUID,
     "description" VARCHAR(255) NOT NULL,
     "link" TEXT NOT NULL DEFAULT '',
     "quantity" DECIMAL(10,2) NOT NULL,
@@ -128,12 +201,15 @@ CREATE TABLE "purchase_approvals" (
 -- CreateTable
 CREATE TABLE "approval_workflows" (
     "id" UUID NOT NULL,
+    "tenant_id" UUID NOT NULL,
     "department_id" UUID NOT NULL,
     "previous_workflow_id" UUID,
     "version" INTEGER NOT NULL DEFAULT 1,
     "is_active" BOOLEAN NOT NULL DEFAULT true,
     "min_amount" DECIMAL(10,2) NOT NULL DEFAULT 0,
     "final_action" VARCHAR(30) NOT NULL DEFAULT 'BUYER_CLOSE',
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     CONSTRAINT "approval_workflows_pkey" PRIMARY KEY ("id")
 );
@@ -157,6 +233,24 @@ CREATE TABLE "workflow_steps" (
     CONSTRAINT "workflow_steps_pkey" PRIMARY KEY ("id")
 );
 
+-- CreateTable
+CREATE TABLE "notifications" (
+    "id" UUID NOT NULL,
+    "user_id" UUID NOT NULL,
+    "type" VARCHAR(50) NOT NULL,
+    "title" VARCHAR(255) NOT NULL,
+    "body" TEXT NOT NULL,
+    "purchase_id" UUID,
+    "read_at" TIMESTAMP(3),
+    "created_at" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "tenant_id" UUID NOT NULL,
+
+    CONSTRAINT "notifications_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateIndex
+CREATE UNIQUE INDEX "system_settings_tenant_id_key" ON "system_settings"("tenant_id");
+
 -- CreateIndex
 CREATE UNIQUE INDEX "roles_name_key" ON "roles"("name");
 
@@ -170,13 +264,22 @@ CREATE INDEX "users_email_idx" ON "users"("email");
 CREATE INDEX "users_role_id_idx" ON "users"("role_id");
 
 -- CreateIndex
-CREATE UNIQUE INDEX "suppliers_cnpj_key" ON "suppliers"("cnpj");
+CREATE UNIQUE INDEX "password_reset_tokens_token_hash_key" ON "password_reset_tokens"("token_hash");
+
+-- CreateIndex
+CREATE INDEX "password_reset_tokens_token_hash_idx" ON "password_reset_tokens"("token_hash");
+
+-- CreateIndex
+CREATE INDEX "categories_parent_id_idx" ON "categories"("parent_id");
 
 -- CreateIndex
 CREATE INDEX "suppliers_cnpj_idx" ON "suppliers"("cnpj");
 
 -- CreateIndex
 CREATE INDEX "suppliers_status_idx" ON "suppliers"("status");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "suppliers_tenant_id_cnpj_key" ON "suppliers"("tenant_id", "cnpj");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "purchases_number_key" ON "purchases"("number");
@@ -194,6 +297,15 @@ CREATE INDEX "purchases_status_idx" ON "purchases"("status");
 CREATE INDEX "purchases_workflow_id_idx" ON "purchases"("workflow_id");
 
 -- CreateIndex
+CREATE INDEX "quotes_purchase_id_idx" ON "quotes"("purchase_id");
+
+-- CreateIndex
+CREATE INDEX "quote_items_purchase_item_id_idx" ON "quote_items"("purchase_item_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "quote_items_quote_id_purchase_item_id_key" ON "quote_items"("quote_id", "purchase_item_id");
+
+-- CreateIndex
 CREATE INDEX "purchase_items_purchase_id_idx" ON "purchase_items"("purchase_id");
 
 -- CreateIndex
@@ -205,8 +317,20 @@ CREATE INDEX "approval_workflows_department_id_is_active_idx" ON "approval_workf
 -- CreateIndex
 CREATE INDEX "workflow_steps_workflow_id_idx" ON "workflow_steps"("workflow_id");
 
+-- CreateIndex
+CREATE INDEX "notifications_user_id_read_at_idx" ON "notifications"("user_id", "read_at");
+
+-- AddForeignKey
+ALTER TABLE "system_settings" ADD CONSTRAINT "system_settings_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "departments" ADD CONSTRAINT "departments_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
 -- AddForeignKey
 ALTER TABLE "departments" ADD CONSTRAINT "departments_parent_id_fkey" FOREIGN KEY ("parent_id") REFERENCES "departments"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "users" ADD CONSTRAINT "users_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "users" ADD CONSTRAINT "users_role_id_fkey" FOREIGN KEY ("role_id") REFERENCES "roles"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -216,6 +340,21 @@ ALTER TABLE "user_departments" ADD CONSTRAINT "user_departments_user_id_fkey" FO
 
 -- AddForeignKey
 ALTER TABLE "user_departments" ADD CONSTRAINT "user_departments_department_id_fkey" FOREIGN KEY ("department_id") REFERENCES "departments"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "password_reset_tokens" ADD CONSTRAINT "password_reset_tokens_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "categories" ADD CONSTRAINT "categories_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "categories" ADD CONSTRAINT "categories_parent_id_fkey" FOREIGN KEY ("parent_id") REFERENCES "categories"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "suppliers" ADD CONSTRAINT "suppliers_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "purchases" ADD CONSTRAINT "purchases_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "purchases" ADD CONSTRAINT "purchases_requester_id_fkey" FOREIGN KEY ("requester_id") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -233,7 +372,25 @@ ALTER TABLE "purchases" ADD CONSTRAINT "purchases_workflow_id_fkey" FOREIGN KEY 
 ALTER TABLE "purchases" ADD CONSTRAINT "purchases_current_step_id_fkey" FOREIGN KEY ("current_step_id") REFERENCES "workflow_steps"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
+ALTER TABLE "quotes" ADD CONSTRAINT "quotes_purchase_id_fkey" FOREIGN KEY ("purchase_id") REFERENCES "purchases"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "quotes" ADD CONSTRAINT "quotes_supplier_id_fkey" FOREIGN KEY ("supplier_id") REFERENCES "suppliers"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "quotes" ADD CONSTRAINT "quotes_submitted_by_fkey" FOREIGN KEY ("submitted_by") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "quote_items" ADD CONSTRAINT "quote_items_quote_id_fkey" FOREIGN KEY ("quote_id") REFERENCES "quotes"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "quote_items" ADD CONSTRAINT "quote_items_purchase_item_id_fkey" FOREIGN KEY ("purchase_item_id") REFERENCES "purchase_items"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "purchase_items" ADD CONSTRAINT "purchase_items_purchase_id_fkey" FOREIGN KEY ("purchase_id") REFERENCES "purchases"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "purchase_items" ADD CONSTRAINT "purchase_items_category_id_fkey" FOREIGN KEY ("category_id") REFERENCES "categories"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "purchase_approvals" ADD CONSTRAINT "purchase_approvals_purchase_id_fkey" FOREIGN KEY ("purchase_id") REFERENCES "purchases"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -243,6 +400,9 @@ ALTER TABLE "purchase_approvals" ADD CONSTRAINT "purchase_approvals_step_id_fkey
 
 -- AddForeignKey
 ALTER TABLE "purchase_approvals" ADD CONSTRAINT "purchase_approvals_acted_by_fkey" FOREIGN KEY ("acted_by") REFERENCES "users"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "approval_workflows" ADD CONSTRAINT "approval_workflows_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "approval_workflows" ADD CONSTRAINT "approval_workflows_department_id_fkey" FOREIGN KEY ("department_id") REFERENCES "departments"("id") ON DELETE RESTRICT ON UPDATE CASCADE;
@@ -264,3 +424,12 @@ ALTER TABLE "workflow_steps" ADD CONSTRAINT "workflow_steps_approver_role_id_fke
 
 -- AddForeignKey
 ALTER TABLE "workflow_steps" ADD CONSTRAINT "workflow_steps_approver_user_id_fkey" FOREIGN KEY ("approver_user_id") REFERENCES "users"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "notifications" ADD CONSTRAINT "notifications_tenant_id_fkey" FOREIGN KEY ("tenant_id") REFERENCES "tenants"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "notifications" ADD CONSTRAINT "notifications_user_id_fkey" FOREIGN KEY ("user_id") REFERENCES "users"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "notifications" ADD CONSTRAINT "notifications_purchase_id_fkey" FOREIGN KEY ("purchase_id") REFERENCES "purchases"("id") ON DELETE SET NULL ON UPDATE CASCADE;

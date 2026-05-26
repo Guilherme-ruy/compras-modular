@@ -28,6 +28,14 @@ api.interceptors.response.use(
             if (window.location.pathname !== '/login') {
                 window.location.href = '/login';
             }
+        } else if (error.response?.status === 402) {
+            // Subscription required
+            if (!(window.location.search.includes('upgrade=true'))) {
+                window.location.search = '?upgrade=true';
+            }
+            // Return a never-resolving promise so the calling component's .catch() doesn't fire
+            // This prevents default alert/toast popups from showing "Internal server error"
+            return new Promise(() => {});
         }
         return Promise.reject(error);
     }

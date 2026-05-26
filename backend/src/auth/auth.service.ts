@@ -15,6 +15,7 @@ export interface JwtPayload {
   name: string;
   roleName: string;
   roleId: string;
+  tenantId: string;
   departments: string[];
 }
 
@@ -53,6 +54,7 @@ export class AuthService {
       name: user.name,
       roleName: user.role.name,
       roleId: user.roleId,
+      tenantId: user.tenantId,
       departments: user.userDepartments.map(ud => ud.departmentId),
     };
 
@@ -67,6 +69,76 @@ export class AuthService {
         role: user.role.name,
       },
       permissions: {},
+    };
+  }
+
+  async signUp(companyName: string, email: string, phone: string, password: string) {
+    const existing = await this.prisma.user.findUnique({
+      where: { email: email.toLowerCase().trim() },
+    });
+    if (existing) {
+      throw new BadRequestException('Email já está em uso.');
+    }
+
+    let tenantAdminRole = await this.prisma.role.findUnique({ where: { name: 'TENANT_ADMIN' } });
+    if (!tenantAdminRole) {
+      tenantAdminRole = await this.prisma.role.create({
+        data: { name: 'TENANT_ADMIN', permissions: {} }
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(password, 10);
+
+    const tenant = await this.prisma.tenant.create({
+      data: {
+        name: companyName,
+        subscriptionStatus: 'trialing',
+        trialEndsAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 dias
+        settings: {
+          create: {
+            companyName,
+          }
+        },
+        users: {
+          create: {
+            name: 'Administrador',
+            email: email.toLowerCase().trim(),
+            phone,
+            passwordHash,
+            roleId: tenantAdminRole.id,
+            isActive: true,
+          }
+        }
+      },
+      include: {
+        users: true
+      }
+    });
+
+    const user = tenant.users[0];
+
+    const payload: JwtPayload = {
+      sub: user.id,
+      email: user.email,
+      name: user.name,
+      roleName: tenantAdminRole.name,
+      roleId: tenantAdminRole.id,
+      tenantId: tenant.id,
+      departments: [],
+    };
+
+    const token = this.jwtService.sign(payload);
+
+    return {
+      token,
+      user: {
+        id: user.id,
+        name: user.name,
+        email: user.email,
+        role: tenantAdminRole.name,
+        tenantId: tenant.id,
+      },
+      message: 'Conta criada com sucesso.'
     };
   }
 

@@ -19,7 +19,7 @@ export class SettingsController {
   @Get()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('SUPERADMIN', 'ADMIN')
+  @Roles('SUPERADMIN', 'TENANT_ADMIN', 'ADMIN', 'Administrador')
   @ApiOperation({ summary: 'Obter todas as configurações' })
   getSettings() {
     return this.settingsService.getSettings();
@@ -28,7 +28,7 @@ export class SettingsController {
   @Put()
   @ApiBearerAuth()
   @UseGuards(JwtAuthGuard, RolesGuard)
-  @Roles('SUPERADMIN', 'ADMIN')
+  @Roles('SUPERADMIN', 'TENANT_ADMIN', 'ADMIN', 'Administrador')
   @ApiOperation({ summary: 'Atualizar configurações' })
   updateSettings(@Body() dto: UpdateSettingsDto) {
     return this.settingsService.updateSettings(dto);

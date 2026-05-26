@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
-import { ArrowLeft, Plus, Trash2, CheckCircle } from 'lucide-react';
+import { useNavigate, useParams, useSearchParams } from 'react-router-dom';
+import { ArrowLeft, ClipboardList, Plus, Tag, Trash2, CheckCircle } from 'lucide-react';
 import api from '../services/api';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -30,6 +30,7 @@ export function PurchaseCreate() {
   const isEdit = Boolean(id);
   const navigate = useNavigate();
   const { user } = useAuth();
+  const [searchParams] = useSearchParams();
 
   useEffect(() => {
     if (user?.roleName?.toUpperCase() === 'VIEWER') {
@@ -41,8 +42,11 @@ export function PurchaseCreate() {
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [items, setItems] = useState<Item[]>([{ description: '', link: '', quantity: 1, unitPrice: 0, unitPriceText: '' }]);
   const [justification, setJustification] = useState('');
-  const [priority, setPriority] = useState('MEDIA');
+  const [priority, setPriority] = useState('BAIXA');
   const [priorityManuallySet, setPriorityManuallySet] = useState(false);
+  const [purchaseType, setPurchaseType] = useState<'DIRECT' | 'QUOTE'>(
+    searchParams.get('type') === 'QUOTE' ? 'QUOTE' : 'DIRECT'
+  );
 
   const [departments, setDepartments] = useState<Department[]>([]);
   const [suppliers, setSuppliers] = useState<any[]>([]);
@@ -51,53 +55,53 @@ export function PurchaseCreate() {
   const [workflowLookupReady, setWorkflowLookupReady] = useState(false);
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [selectedSupplier, setSelectedSupplier] = useState('');
-  const [feedbackMsg, setFeedbackMsg] = useState<{type: 'success'|'error', text: string} | null>(null);
+  const [feedbackMsg, setFeedbackMsg] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
   useEffect(() => {
     const fetchSelects = async () => {
-        try {
-            // Load departments, suppliers and categories
-            const [deps, sups, cats] = await Promise.all([
-              api.get('/departments'),
-              api.get('/suppliers?status=ACTIVE'),
-              api.get('/categories/flat'),
-            ]);
-            
-            const isAdmin = ['SUPERADMIN', 'ADMIN'].includes(user?.roleName?.toUpperCase() || '');
+      try {
+        // Load departments, suppliers and categories
+        const [deps, sups, cats] = await Promise.all([
+          api.get('/departments'),
+          api.get('/suppliers?status=ACTIVE'),
+          api.get('/categories/flat'),
+        ]);
 
-            const departmentRows = Array.isArray(deps.data) ? deps.data : deps.data?.data;
-            const supplierRows = Array.isArray(sups.data) ? sups.data : sups.data?.data;
+        const isAdmin = ['SUPERADMIN', 'ADMIN'].includes(user?.roleName?.toUpperCase() || '');
 
-            let filteredDepts = Array.isArray(departmentRows) ? departmentRows : [];
-            
-            // Filter departments for non-admins based on their linked departments in AuthContext
-            if (!isAdmin && user?.departments) {
-              filteredDepts = filteredDepts.filter(d => user.departments.includes(d.id));
-            }
+        const departmentRows = Array.isArray(deps.data) ? deps.data : deps.data?.data;
+        const supplierRows = Array.isArray(sups.data) ? sups.data : sups.data?.data;
 
-            const categoryRows = Array.isArray(cats.data) ? cats.data : cats.data?.data ?? [];
-            setDepartments(filteredDepts);
-            setSuppliers(Array.isArray(supplierRows) ? supplierRows : []);
-            setCategories(Array.isArray(categoryRows) ? categoryRows : []);
+        let filteredDepts = Array.isArray(departmentRows) ? departmentRows : [];
 
-            // Try to load workflows to indicate which departments are blocked/ready
-            try {
-              const workflows = await api.get('/workflows');
-              const workflowRows = Array.isArray(workflows.data) ? workflows.data : workflows.data?.data;
-              const workflowDepartmentIds = Array.isArray(workflowRows)
-                ? workflowRows.map((row: any) => row.departmentId).filter(Boolean)
-                : [];
-              setConfiguredDepartmentIds(workflowDepartmentIds);
-              setWorkflowLookupReady(true);
-            } catch (workflowErr) {
-              console.warn("Could not load workflows info", workflowErr);
-              setConfiguredDepartmentIds([]);
-              setWorkflowLookupReady(false);
-            }
-        } catch(err) {
-            console.error("Failed to load generic data", err);
-            setFeedbackMsg({ type: 'error', text: 'Erro ao carregar dados dos departamentos/fornecedores.' });
+        // Filter departments for non-admins based on their linked departments in AuthContext
+        if (!isAdmin && user?.departments) {
+          filteredDepts = filteredDepts.filter(d => user.departments.includes(d.id));
         }
+
+        const categoryRows = Array.isArray(cats.data) ? cats.data : cats.data?.data ?? [];
+        setDepartments(filteredDepts);
+        setSuppliers(Array.isArray(supplierRows) ? supplierRows : []);
+        setCategories(Array.isArray(categoryRows) ? categoryRows : []);
+
+        // Try to load workflows to indicate which departments are blocked/ready
+        try {
+          const workflows = await api.get('/workflows');
+          const workflowRows = Array.isArray(workflows.data) ? workflows.data : workflows.data?.data;
+          const workflowDepartmentIds = Array.isArray(workflowRows)
+            ? workflowRows.map((row: any) => row.departmentId).filter(Boolean)
+            : [];
+          setConfiguredDepartmentIds(workflowDepartmentIds);
+          setWorkflowLookupReady(true);
+        } catch (workflowErr) {
+          console.warn("Could not load workflows info", workflowErr);
+          setConfiguredDepartmentIds([]);
+          setWorkflowLookupReady(false);
+        }
+      } catch (err) {
+        console.error("Failed to load generic data", err);
+        setFeedbackMsg({ type: 'error', text: 'Erro ao carregar dados dos departamentos/fornecedores.' });
+      }
     };
     if (user) fetchSelects();
   }, [user]);
@@ -118,6 +122,7 @@ export function PurchaseCreate() {
 
           setSelectedDepartment(purchase.departmentId);
           setSelectedSupplier(purchase.supplierId || '');
+          setPurchaseType((purchase.purchaseType as 'DIRECT' | 'QUOTE') || 'DIRECT');
           setJustification(purchase.metadata?.justification || purchase.metadata?.justificativa || '');
           if (purchase.metadata?.prioridade) {
             setPriority(purchase.metadata.prioridade);
@@ -184,8 +189,8 @@ export function PurchaseCreate() {
       setFeedbackMsg({ type: 'error', text: 'Selecione um departamento.' });
       return;
     }
-    if (!selectedSupplier) {
-      setFeedbackMsg({ type: 'error', text: 'Selecione um fornecedor.' });
+    if (purchaseType === 'DIRECT' && !selectedSupplier) {
+      setFeedbackMsg({ type: 'error', text: 'Selecione um fornecedor ou mude para o modo de cotação.' });
       return;
     }
     if (items.length === 0) {
@@ -195,11 +200,16 @@ export function PurchaseCreate() {
 
     try {
       setLoading(true);
-      const totalAmount = items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
+      // Em QUOTE o valor vem da cotação selecionada; itens entram só como especificação.
+      const totalAmount =
+        purchaseType === 'QUOTE'
+          ? 0
+          : items.reduce((sum, item) => sum + (item.quantity * item.unitPrice), 0);
 
       const payload = {
         departmentId: selectedDepartment,
-        supplierId: selectedSupplier || undefined,
+        supplierId: purchaseType === 'DIRECT' ? (selectedSupplier || undefined) : undefined,
+        purchaseType,
         totalAmount,
         justification: justification,
         isDraft: true,
@@ -210,7 +220,7 @@ export function PurchaseCreate() {
           description: item.description,
           link: item.link,
           quantity: item.quantity,
-          unitPrice: item.unitPrice,
+          unitPrice: purchaseType === 'QUOTE' ? 0 : item.unitPrice,
           ...(item.categoryId ? { categoryId: item.categoryId } : {}),
         })),
       };
@@ -251,7 +261,7 @@ export function PurchaseCreate() {
     selectedDepartment &&
     !configuredDepartmentIds.includes(selectedDepartment),
   );
-  
+
   const selectedDepartmentData = departments.find((department) => department.id === selectedDepartment);
   const selectedDepartmentInactive = Boolean(
     selectedDepartmentData && selectedDepartmentData.isActive === false,
@@ -279,8 +289,79 @@ export function PurchaseCreate() {
         <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
           <h2 className="text-lg font-semibold text-slate-800 mb-4 border-b border-slate-100 pb-2">Informações Gerais</h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-            <div className="md:col-span-1">
+          {/* Purchase type toggle */}
+          {!isEdit && (
+            <div className="mb-8">
+              <p className="mb-3 text-sm font-medium text-slate-700">Modalidade da Compra</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* DIRECT CARD */}
+                <button
+                  type="button"
+                  onClick={() => setPurchaseType('DIRECT')}
+                  className={`relative flex flex-col items-start gap-3 rounded-xl border p-5 text-left transition-all ${purchaseType === 'DIRECT'
+                    ? 'border-brand-500 bg-brand-50/50 shadow-sm ring-1 ring-brand-500'
+                    : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                >
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-full ${purchaseType === 'DIRECT' ? 'bg-brand-100 text-brand-600' : 'bg-slate-100 text-slate-500'
+                    }`}>
+                    <Tag className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className={`font-semibold ${purchaseType === 'DIRECT' ? 'text-brand-900' : 'text-slate-800'}`}>
+                      Fornecedor já definido
+                    </h3>
+                    <p className={`mt-1 text-sm leading-relaxed ${purchaseType === 'DIRECT' ? 'text-brand-700/80' : 'text-slate-500'}`}>
+                      Você já sabe com quem comprar. Selecione o fornecedor e preencha os itens diretamente.
+                    </p>
+                  </div>
+                  {purchaseType === 'DIRECT' && (
+                    <div className="absolute top-5 right-5 text-brand-600">
+                      <CheckCircle className="h-5 w-5" />
+                    </div>
+                  )}
+                </button>
+
+                {/* QUOTE CARD */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPurchaseType('QUOTE');
+                    setSelectedSupplier('');
+                    // Limpa preços dos itens — em QUOTE o valor vem da cotação selecionada
+                    setItems(prev => prev.map(it => ({ ...it, unitPrice: 0, unitPriceText: '' })));
+                    setPriorityManuallySet(false);
+                  }}
+                  className={`relative flex flex-col items-start gap-3 rounded-xl border p-5 text-left transition-all ${purchaseType === 'QUOTE'
+                    ? 'border-sky-500 bg-sky-50/50 shadow-sm ring-1 ring-sky-500'
+                    : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                    }`}
+                >
+                  <div className={`flex h-10 w-10 items-center justify-center rounded-full ${purchaseType === 'QUOTE' ? 'bg-sky-100 text-sky-600' : 'bg-slate-100 text-slate-500'
+                    }`}>
+                    <ClipboardList className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className={`font-semibold ${purchaseType === 'QUOTE' ? 'text-sky-900' : 'text-slate-800'}`}>
+                      Solicitar Cotações
+                    </h3>
+                    <p className={`mt-1 text-sm leading-relaxed ${purchaseType === 'QUOTE' ? 'text-sky-700/80' : 'text-slate-500'}`}>
+                      Precisa de orçamentos? O setor de compras fará as cotações para você após a criação.
+                    </p>
+                  </div>
+                  {purchaseType === 'QUOTE' && (
+                    <div className="absolute top-5 right-5 text-sky-600">
+                      <CheckCircle className="h-5 w-5" />
+                    </div>
+                  )}
+                </button>
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            {/* Departamento */}
+            <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">Centro de Custo / Departamento</label>
               <select
                 required
@@ -315,22 +396,34 @@ export function PurchaseCreate() {
               )}
             </div>
 
-            <div className="md:col-span-1">
-              <label className="block text-sm font-medium text-slate-700 mb-1">Fornecedor</label>
-              <select
-                required
-                value={selectedSupplier}
-                onChange={e => setSelectedSupplier(e.target.value)}
-                className="w-full px-4 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all bg-white"
-              >
-                <option value="" disabled>Selecione um fornecedor ativo</option>
-                {suppliers.map(sup => (
-                  <option key={sup.id} value={sup.id}>{sup.companyName} {sup.cnpj && `- ${sup.cnpj}`}</option>
-                ))}
-              </select>
-            </div>
+            {/* Fornecedor */}
+            {purchaseType === 'DIRECT' ? (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Fornecedor</label>
+                <select
+                  required
+                  value={selectedSupplier}
+                  onChange={e => setSelectedSupplier(e.target.value)}
+                  className="w-full px-4 py-2 border border-slate-300 rounded-md focus:ring-2 focus:ring-brand-500 focus:border-brand-500 outline-none transition-all bg-white"
+                >
+                  <option value="" disabled>Selecione um fornecedor ativo</option>
+                  {suppliers.map(sup => (
+                    <option key={sup.id} value={sup.id}>{sup.companyName} {sup.cnpj && `- ${sup.cnpj}`}</option>
+                  ))}
+                </select>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-sm font-medium text-slate-700 mb-1">Fornecedor</label>
+                <div className="flex items-start gap-2.5 rounded-lg border border-slate-200 bg-slate-50 px-4 py-2.5 text-sm text-slate-600 min-h-[2.625rem]">
+                  <ClipboardList className="mt-0.5 h-4 w-4 shrink-0 text-sky-500" />
+                  <span>Aguardando cotações...</span>
+                </div>
+              </div>
+            )}
 
-            <div className="md:col-span-1">
+            {/* Prioridade */}
+            <div>
               <label className="block text-sm font-medium text-slate-700 mb-1">
                 Prioridade
                 {!priorityManuallySet && total > 0 && (
@@ -349,7 +442,8 @@ export function PurchaseCreate() {
               </select>
             </div>
 
-            <div className="md:col-span-2">
+            {/* Justificativa — linha inteira */}
+            <div className="md:col-span-3">
               <label className="block text-sm font-medium text-slate-700 mb-1">Justificativa</label>
               <textarea
                 required
@@ -433,18 +527,20 @@ export function PurchaseCreate() {
                       className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-brand-500 focus:border-brand-500 outline-none"
                     />
                   </div>
-                  <div className="w-36 shrink-0">
-                    <label className="block text-xs font-medium text-slate-500 mb-1">Preço Unit.</label>
-                    <input
-                      required
-                      type="text"
-                      inputMode="numeric"
-                      value={item.unitPriceText}
-                      onChange={e => handlePriceChange(index, e.target.value)}
-                      placeholder="0,00"
-                      className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-brand-500 focus:border-brand-500 outline-none"
-                    />
-                  </div>
+                  {purchaseType === 'DIRECT' && (
+                    <div className="w-36 shrink-0">
+                      <label className="block text-xs font-medium text-slate-500 mb-1">Preço Unit.</label>
+                      <input
+                        required
+                        type="text"
+                        inputMode="numeric"
+                        value={item.unitPriceText}
+                        onChange={e => handlePriceChange(index, e.target.value)}
+                        placeholder="0,00"
+                        className="w-full px-3 py-2 border border-slate-300 rounded-md focus:ring-brand-500 focus:border-brand-500 outline-none"
+                      />
+                    </div>
+                  )}
                   <button
                     type="button"
                     onClick={() => handleRemoveItem(index)}
@@ -457,12 +553,19 @@ export function PurchaseCreate() {
             })}
 
             <div className="pt-4 mt-6 border-t border-slate-100 flex justify-end">
-              <div className="text-right">
-                <p className="text-sm text-slate-500 font-medium">Total Estimado</p>
-                <p className="text-2xl font-bold text-slate-800">
-                  {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(total)}
-                </p>
-              </div>
+              {purchaseType === 'DIRECT' ? (
+                <div className="text-right">
+                  <p className="text-sm text-slate-500 font-medium">Total Estimado</p>
+                  <p className="text-2xl font-bold text-slate-800">
+                    {new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(total)}
+                  </p>
+                </div>
+              ) : (
+                <div className="text-right text-sm text-slate-500">
+                  <p className="font-medium text-slate-600">Sem valor definido</p>
+                  <p className="text-xs mt-0.5">O valor total será definido pela cotação selecionada.</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

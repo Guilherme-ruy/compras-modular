@@ -1,18 +1,19 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Palette, Building2, User, KeyRound } from 'lucide-react';
+import { Palette, Building2, User, KeyRound, CreditCard } from 'lucide-react';
 import { useAuth } from '../../../contexts/AuthContext';
 import { settingsApi } from '../api/settingsApi';
 import CompanyTab from './CompanyTab';
 import ThemeTab from './ThemeTab';
 import ProfileTab from './ProfileTab';
 import PasswordTab from './PasswordTab';
+import BillingTab from './BillingTab';
 
-type TabId = 'profile' | 'password' | 'company' | 'theme';
+type TabId = 'profile' | 'password' | 'company' | 'theme' | 'billing';
 
 export default function Settings() {
     const { user } = useAuth();
-    const isAdmin = user?.roleName === 'SUPERADMIN' || user?.roleName === 'ADMIN';
+    const isAdmin = ['SUPERADMIN', 'TENANT_ADMIN', 'ADMIN', 'Administrador'].includes(user?.roleName ?? '');
     const [activeTab, setActiveTab] = useState<TabId>('profile');
 
     const { data: systemSettings, isLoading } = useQuery({
@@ -28,6 +29,7 @@ export default function Settings() {
             ? [
                 { id: 'company' as TabId, label: 'Empresa', icon: Building2 },
                 { id: 'theme' as TabId, label: 'Aparência', icon: Palette },
+                { id: 'billing' as TabId, label: 'Assinatura', icon: CreditCard },
             ]
             : []),
     ];
@@ -68,6 +70,7 @@ export default function Settings() {
                 <div className="flex-1 p-8 md:p-10">
                     {activeTab === 'profile' && <ProfileTab />}
                     {activeTab === 'password' && <PasswordTab />}
+                    {activeTab === 'billing' && isAdmin && <BillingTab />}
 
                     {isLoading && isAdmin && (activeTab === 'company' || activeTab === 'theme') && (
                         <div className="flex flex-col items-center justify-center py-20 text-slate-400 gap-4">

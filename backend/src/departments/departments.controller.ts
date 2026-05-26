@@ -40,21 +40,21 @@ export class DepartmentsController {
   }
 
   @Get(':id')
-  @Roles('SUPERADMIN')
+  @Roles('SUPERADMIN', 'TENANT_ADMIN', 'ADMIN', 'Administrador')
   @ApiOperation({ summary: 'Buscar departamento por ID' })
   findOne(@Param('id', ParseUUIDPipe) id: string) {
     return this.departmentsService.findById(id);
   }
 
   @Post()
-  @Roles('SUPERADMIN')
+  @Roles('SUPERADMIN', 'TENANT_ADMIN', 'ADMIN', 'Administrador')
   @ApiOperation({ summary: 'Criar departamento' })
   create(@Body() dto: CreateDepartmentDto) {
     return this.departmentsService.create(dto);
   }
 
   @Put(':id')
-  @Roles('SUPERADMIN')
+  @Roles('SUPERADMIN', 'TENANT_ADMIN', 'ADMIN', 'Administrador')
   @ApiOperation({ summary: 'Atualizar departamento' })
   update(
     @Param('id', ParseUUIDPipe) id: string,

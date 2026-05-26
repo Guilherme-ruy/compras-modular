@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AlertTriangle, Pencil, Plus, Search, Trash2 } from 'lucide-react';
+import { Plus, Search, Pencil, Trash2 } from 'lucide-react';
 import api from '../services/api';
 import { ConfirmModal } from '../components/ui/ConfirmModal';
 import { StandardTable, type TableColumn } from '../components/ui/table/StandardTable';
@@ -390,8 +390,6 @@ export function WorkflowList() {
     ],
     [getBuyerLabels, getStepLabel, getWorkflowHealth, navigate, requestDelete],
   );
-
-  const blockedDepartmentsOnPage = rows.filter((row) => !row.workflow).length;
 
   return (
     <div className="space-y-5">

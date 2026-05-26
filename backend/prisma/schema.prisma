@@ -10,9 +10,33 @@ datasource db {
 //  SYSTEM
 // ─────────────────────────────────────────────────────────
 
+model Tenant {
+  id                   String    @id @default(uuid()) @db.Uuid
+  name                 String    @db.VarChar(255)
+  stripeCustomerId     String?   @map("stripe_customer_id")
+  stripeSubscriptionId String?   @map("stripe_subscription_id")
+  subscriptionStatus   String    @default("trialing") @map("subscription_status")
+  trialEndsAt          DateTime? @map("trial_ends_at")
+  createdAt            DateTime  @default(now()) @map("created_at")
+  updatedAt            DateTime  @updatedAt @map("updated_at")
+
+  settings      SystemSettings?
+  users         User[]
+  departments   Department[]
+  categories    Category[]
+  suppliers     Supplier[]
+  purchases     Purchase[]
+  workflows     ApprovalWorkflow[]
+  notifications Notification[]
+
+  @@map("tenants")
+}
+
 model SystemSettings {
   id          Int    @id @default(autoincrement())
+  tenantId    String @unique @map("tenant_id") @db.Uuid
   companyName String @map("company_name") @db.VarChar(255)
+  tenant      Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   document    String @default("") @db.VarChar(50)
   themeConfig Json   @default("{}") @map("theme_config")
 
@@ -36,12 +60,14 @@ model Role {
 
 model Department {
   id        String   @id @default(uuid()) @db.Uuid
+  tenantId  String   @map("tenant_id") @default("00000000-0000-0000-0000-000000000000") @db.Uuid
   name      String   @db.VarChar(255)
   parentId  String?  @map("parent_id") @db.Uuid
   isActive  Boolean  @default(true) @map("is_active")
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
+  tenant   Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   parent   Department?  @relation("DepartmentHierarchy", fields: [parentId], references: [id])
   children Department[] @relation("DepartmentHierarchy")
 
@@ -54,21 +80,25 @@ model Department {
 
 model User {
   id           String  @id @default(uuid()) @db.Uuid
+  tenantId     String  @map("tenant_id") @default("00000000-0000-0000-0000-000000000000") @db.Uuid
   roleId       String  @map("role_id") @db.Uuid
   name         String  @db.VarChar(255)
   email        String  @unique @db.VarChar(255)
   passwordHash String  @map("password_hash") @db.VarChar(255)
+  phone        String  @default("") @db.VarChar(20)
   isActive     Boolean @default(true) @map("is_active")
 
+  tenant          Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   role            Role             @relation(fields: [roleId], references: [id])
   userDepartments UserDepartment[]
 
-  purchasesRequested  Purchase[]              @relation("PurchaseRequester")
-  approvalLogs        PurchaseApproval[]      @relation("ApprovalActor")
-  workflowSteps       WorkflowStep[]          @relation("StepApprover")
+  purchasesRequested  Purchase[]           @relation("PurchaseRequester")
+  approvalLogs        PurchaseApproval[]   @relation("ApprovalActor")
+  workflowSteps       WorkflowStep[]       @relation("StepApprover")
   workflowBuyerSlots  WorkflowBuyer[]
   passwordResetTokens PasswordResetToken[]
   notifications       Notification[]
+  quotesSubmitted     Quote[]              @relation("QuoteSubmitter")
 
   @@index([email])
   @@index([roleId])
@@ -106,12 +136,14 @@ model PasswordResetToken {
 
 model Category {
   id       String  @id @default(uuid()) @db.Uuid
+  tenantId String  @map("tenant_id") @default("00000000-0000-0000-0000-000000000000") @db.Uuid
   name     String  @db.VarChar(255)
   parentId String? @map("parent_id") @db.Uuid
   isActive Boolean @default(true) @map("is_active")
 
-  parent   Category?  @relation("CategoryTree", fields: [parentId], references: [id])
-  children Category[] @relation("CategoryTree")
+  tenant   Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  parent   Category?      @relation("CategoryTree", fields: [parentId], references: [id])
+  children Category[]     @relation("CategoryTree")
   items    PurchaseItem[]
 
   @@index([parentId])
@@ -126,9 +158,11 @@ model Supplier {
   id String @id @default(uuid()) @db.Uuid
 
   // Section 1 - Company
+  tenantId    String @map("tenant_id") @default("00000000-0000-0000-0000-000000000000") @db.Uuid
   companyName String @map("company_name") @db.VarChar(255)
+  tenant      Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   tradeName   String @default("") @map("trade_name") @db.VarChar(255)
-  cnpj        String @unique @db.VarChar(20)
+  cnpj        String @db.VarChar(20)
   stateReg    String @default("") @map("state_reg") @db.VarChar(50)
   status      String @default("ACTIVE") @db.VarChar(20) // ACTIVE, INACTIVE, BLOCKED
 
@@ -163,7 +197,9 @@ model Supplier {
   deletedAt DateTime? @map("deleted_at")
 
   purchases Purchase[]
+  quotes    Quote[]
 
+  @@unique([tenantId, cnpj])
   @@index([cnpj])
   @@index([status])
   @@map("suppliers")
@@ -175,33 +211,73 @@ model Supplier {
 
 model Purchase {
   id            String   @id @default(uuid()) @db.Uuid
-  number        Int      @default(autoincrement()) @unique
+  number        Int      @unique @default(autoincrement())
+  tenantId      String   @map("tenant_id") @default("00000000-0000-0000-0000-000000000000") @db.Uuid
   requesterId   String   @map("requester_id") @db.Uuid
   departmentId  String   @map("department_id") @db.Uuid
   workflowId    String?  @map("workflow_id") @db.Uuid
   supplierId    String?  @map("supplier_id") @db.Uuid
   totalAmount   Decimal  @map("total_amount") @db.Decimal(10, 2)
-  status        String   @db.VarChar(50) // DRAFT | PENDING_APPROVAL | APPROVED | REJECTED | PENDING_CLOSING | COMPLETED
+  status        String   @db.VarChar(50) // DRAFT | AWAITING_QUOTES | PENDING_APPROVAL | APPROVED | REJECTED | PENDING_CLOSING | COMPLETED
+  purchaseType  String   @default("DIRECT") @map("purchase_type") @db.VarChar(10) // DIRECT | QUOTE
   currentStepId String?  @map("current_step_id") @db.Uuid
   metadata      Json     @default("{}")
   createdAt     DateTime @default(now()) @map("created_at")
   updatedAt     DateTime @updatedAt @map("updated_at")
 
+  tenant      Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   requester   User              @relation("PurchaseRequester", fields: [requesterId], references: [id])
   department  Department        @relation(fields: [departmentId], references: [id])
   supplier    Supplier?         @relation(fields: [supplierId], references: [id])
   workflow    ApprovalWorkflow? @relation("PurchaseWorkflow", fields: [workflowId], references: [id])
   currentStep WorkflowStep?     @relation("PurchaseCurrentStep", fields: [currentStepId], references: [id])
 
-  items    PurchaseItem[]
-  approvals PurchaseApproval[]
+  items         PurchaseItem[]
+  approvals     PurchaseApproval[]
   notifications Notification[]
+  quotes        Quote[]
 
   @@index([requesterId])
   @@index([departmentId])
   @@index([status])
   @@index([workflowId])
   @@map("purchases")
+}
+
+model Quote {
+  id          String    @id @default(uuid()) @db.Uuid
+  purchaseId  String    @map("purchase_id") @db.Uuid
+  supplierId  String    @map("supplier_id") @db.Uuid
+  submittedBy String    @map("submitted_by") @db.Uuid
+  totalAmount Decimal   @map("total_amount") @db.Decimal(10, 2)
+  notes       String    @default("")
+  attachments Json      @default("[]")
+  isSelected  Boolean   @default(false) @map("is_selected")
+  status      String    @default("DRAFT") @db.VarChar(20) // DRAFT | SUBMITTED
+  submittedAt DateTime? @map("submitted_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+
+  purchase  Purchase    @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  supplier  Supplier    @relation(fields: [supplierId], references: [id])
+  submitter User        @relation("QuoteSubmitter", fields: [submittedBy], references: [id])
+  items     QuoteItem[]
+
+  @@index([purchaseId])
+  @@map("quotes")
+}
+
+model QuoteItem {
+  id             String  @id @default(uuid()) @db.Uuid
+  quoteId        String  @map("quote_id") @db.Uuid
+  purchaseItemId String  @map("purchase_item_id") @db.Uuid
+  unitPrice      Decimal @map("unit_price") @db.Decimal(10, 2)
+
+  quote        Quote        @relation(fields: [quoteId], references: [id], onDelete: Cascade)
+  purchaseItem PurchaseItem @relation(fields: [purchaseItemId], references: [id], onDelete: Cascade)
+
+  @@unique([quoteId, purchaseItemId])
+  @@index([purchaseItemId])
+  @@map("quote_items")
 }
 
 model PurchaseItem {
@@ -213,8 +289,9 @@ model PurchaseItem {
   quantity    Decimal @db.Decimal(10, 2)
   unitPrice   Decimal @map("unit_price") @db.Decimal(10, 2)
 
-  purchase Purchase  @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
-  category Category? @relation(fields: [categoryId], references: [id])
+  purchase   Purchase    @relation(fields: [purchaseId], references: [id], onDelete: Cascade)
+  category   Category?   @relation(fields: [categoryId], references: [id])
+  quoteItems QuoteItem[]
 
   @@index([purchaseId])
   @@map("purchase_items")
@@ -243,24 +320,26 @@ model PurchaseApproval {
 // ─────────────────────────────────────────────────────────
 
 model ApprovalWorkflow {
-  id                 String   @id @default(uuid()) @db.Uuid
-  departmentId       String   @map("department_id") @db.Uuid
-  previousWorkflowId String?  @map("previous_workflow_id") @db.Uuid
-  version            Int      @default(1)
-  isActive           Boolean  @default(true) @map("is_active")
-  minAmount          Decimal  @default(0) @map("min_amount") @db.Decimal(10, 2)
-  finalAction        String   @default("BUYER_CLOSE") @map("final_action") @db.VarChar(30) // BUYER_CLOSE | AUTO_APPROVE
+  id                 String  @id @default(uuid()) @db.Uuid
+  tenantId           String  @map("tenant_id") @default("00000000-0000-0000-0000-000000000000") @db.Uuid
+  departmentId       String  @map("department_id") @db.Uuid
+  previousWorkflowId String? @map("previous_workflow_id") @db.Uuid
+  version            Int     @default(1)
+  isActive           Boolean @default(true) @map("is_active")
+  minAmount          Decimal @default(0) @map("min_amount") @db.Decimal(10, 2)
+  finalAction        String  @default("BUYER_CLOSE") @map("final_action") @db.VarChar(30) // BUYER_CLOSE | AUTO_APPROVE
 
-  department       Department        @relation(fields: [departmentId], references: [id])
-  previousWorkflow ApprovalWorkflow? @relation("WorkflowVersioning", fields: [previousWorkflowId], references: [id])
+  tenant           Tenant             @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  department       Department         @relation(fields: [departmentId], references: [id])
+  previousWorkflow ApprovalWorkflow?  @relation("WorkflowVersioning", fields: [previousWorkflowId], references: [id])
   nextVersions     ApprovalWorkflow[] @relation("WorkflowVersioning")
 
   steps     WorkflowStep[]
   buyers    WorkflowBuyer[]
-  purchases Purchase[]     @relation("PurchaseWorkflow")
+  purchases Purchase[]      @relation("PurchaseWorkflow")
 
-  createdAt     DateTime @default(now()) @map("created_at")
-  updatedAt     DateTime @default(now()) @updatedAt @map("updated_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @default(now()) @updatedAt @map("updated_at")
 
   @@index([departmentId, isActive])
   @@map("approval_workflows")
@@ -285,11 +364,11 @@ model WorkflowStep {
   approverRoleId String? @map("approver_role_id") @db.Uuid
   approverUserId String? @map("approver_user_id") @db.Uuid
 
-  workflow       ApprovalWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
-  approverRole   Role?            @relation(fields: [approverRoleId], references: [id])
-  approverUser   User?            @relation("StepApprover", fields: [approverUserId], references: [id])
+  workflow     ApprovalWorkflow @relation(fields: [workflowId], references: [id], onDelete: Cascade)
+  approverRole Role?            @relation(fields: [approverRoleId], references: [id])
+  approverUser User?            @relation("StepApprover", fields: [approverUserId], references: [id])
 
-  purchasesAtStep Purchase[]       @relation("PurchaseCurrentStep")
+  purchasesAtStep Purchase[]         @relation("PurchaseCurrentStep")
   approvalLogs    PurchaseApproval[]
 
   @@index([workflowId])
@@ -311,6 +390,9 @@ model Notification {
   purchaseId String?   @map("purchase_id") @db.Uuid
   readAt     DateTime? @map("read_at")
   createdAt  DateTime  @default(now()) @map("created_at")
+
+  tenantId String @map("tenant_id") @default("00000000-0000-0000-0000-000000000000") @db.Uuid
+  tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
 
   user     User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   purchase Purchase? @relation(fields: [purchaseId], references: [id], onDelete: SetNull)

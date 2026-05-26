@@ -2,6 +2,7 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { useAuth } from './contexts/AuthContext';
 
 import { Login } from './pages/Login';
+import { Signup } from './pages/Signup';
 import { Layout } from './components/layout/Layout';
 import { PurchaseList } from './pages/PurchaseList';
 import { PurchaseDetails } from './pages/PurchaseDetails';
@@ -21,6 +22,7 @@ import { CategoryForm } from './pages/CategoryForm';
 import { ForgotPassword } from './pages/ForgotPassword';
 import { ResetPassword } from './pages/ResetPassword';
 import { Profile } from './pages/Profile';
+
 
 // Lazy loaded features (Suspense compliance)
 const Dashboard = lazy(() => import('./features/dashboard/components/Dashboard'));
@@ -44,9 +46,10 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Navigate to="/app" replace />} />
       <Route path="/login" element={<Login />} />
+      <Route path="/signup" element={<Signup />} />
       <Route path="/forgot-password" element={<ForgotPassword />} />
-      <Route path="/reset-password" element={<ResetPassword />} />
-
+      <Route path="/reset-password" element={<ResetPassword />} />`n      <Route path="/subscription" element={<Navigate to="/app?upgrade=true" replace />} />
+      <Route path="/subscription" element={<Navigate to="/app/subscription" replace />} />
       <Route path="/app/*" element={
         <PrivateRoute>
           <Layout>
@@ -82,6 +85,7 @@ export default function App() {
                 </SuspenseLoader>
               } />
               <Route path="profile" element={<Profile />} />
+              
               <Route path="settings" element={
                 <SuspenseLoader>
                   <Settings />

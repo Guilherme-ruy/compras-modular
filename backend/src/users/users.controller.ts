@@ -18,7 +18,7 @@ export class UsersController {
   constructor(private readonly usersService: UsersService) {}
 
   @Get()
-  @Roles('SUPERADMIN')
+  @Roles('SUPERADMIN', 'TENANT_ADMIN', 'ADMIN', 'Administrador')
   @ApiOperation({ summary: 'Listar usuários' })
   findAll(
     @Query('search') search?: string,
@@ -41,7 +41,7 @@ export class UsersController {
   }
 
   @Post()
-  @Roles('SUPERADMIN')
+  @Roles('SUPERADMIN', 'TENANT_ADMIN', 'ADMIN', 'Administrador')
   @ApiOperation({ summary: 'Criar usuário' })
   create(@Body() dto: CreateUserDto) {
     return this.usersService.create(dto);

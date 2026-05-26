@@ -12,7 +12,7 @@ Cada item descreve o que muda no banco, no backend e no frontend.
 | 1 | Notificações | ✅ Concluída |
 | 3 | Armazenamento de Arquivos (MinIO) | ⬜ Pendente |
 | 4 | Exportação PDF e Excel | ⬜ Pendente |
-| 5 | Multi-Cotação | ⬜ Pendente |
+| 5 | Multi-Cotação | ✅ Concluída |
 
 ---
 

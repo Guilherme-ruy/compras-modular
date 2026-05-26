@@ -33,7 +33,7 @@ export default function CompanyTab({ initialSettings }: CompanyTabProps) {
     const [message, setMessage] = useState<{ type: 'success' | 'error', text: string } | null>(null);
 
     // Only SUPERADMIN/ADMIN can see this tab
-    const isAdmin = user?.roleName === 'SUPERADMIN' || user?.roleName === 'ADMIN';
+    const isAdmin = ['SUPERADMIN', 'TENANT_ADMIN', 'ADMIN', 'Administrador'].includes(user?.roleName ?? '');
     if (!isAdmin) {
         return (
             <div className="p-8 text-center text-slate-500">

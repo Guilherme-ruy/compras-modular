@@ -12,7 +12,7 @@ export class RolesController {
   constructor(private readonly rolesService: RolesService) {}
 
   @Get()
-  @Roles('SUPERADMIN')
+  @Roles('SUPERADMIN', 'TENANT_ADMIN', 'ADMIN', 'Administrador')
   @ApiOperation({ summary: 'Listar todos os papéis' })
   findAll() {
     return this.rolesService.findAll();

@@ -103,7 +103,7 @@ Services como `purchases` e `departments` filtram dados em `findAll()` por role:
 
 ```
 DRAFT
-  ↓ submit()
+  ↓ submit() — purchaseType = DIRECT
 PENDING_APPROVAL
   ↓ approve() — percorre WorkflowSteps em ordem
 [Etapa 1 → Etapa 2 → ... → Etapa Final]
@@ -112,8 +112,17 @@ PENDING_CLOSING
   ↓ close()
 COMPLETED
               ↘ REJECTED (qualquer etapa pode rejeitar)
+
+DRAFT
+  ↓ submit() — purchaseType = QUOTE
+AWAITING_QUOTES
+  ↓ COMPRADOR/ADMIN submetem cotações via POST /purchases/:id/quotes
+  ↓ solicitante/admin seleciona vencedora via POST /purchases/:id/quotes/:quoteId/select
+PENDING_APPROVAL → ... → COMPLETED
 ```
 
+- `Purchase.purchaseType`: `DIRECT` (fornecedor já definido, fluxo padrão) | `QUOTE` (solicitar cotações)
+- `Quote`: proposta submetida por compradores; `isSelected` marca a vencedora; seleção vincula `supplierId`/`totalAmount` ao pedido e avança para `PENDING_APPROVAL`
 - `WorkflowStep` pode ser direcionado a uma **role** ou a um **usuário específico**
 - `ApprovalWorkflow` versiona fluxos via `previousWorkflowId`
 - `PurchaseApproval` é o log imutável de cada ação de aprovação
@@ -162,6 +171,7 @@ Usar `normalizeListResponse()` de `utils/pagination.ts` para tratar tanto arrays
 | workflow_buyers | Compradores N:N por fluxo |
 | password_reset_tokens | Tokens de reset de senha (SHA-256, expiram em 1h, uso único) |
 | notifications | Notificações por usuário com suporte a `readAt` |
+| quotes | Cotações de fornecedores para pedidos `AWAITING_QUOTES`; `isSelected` marca vencedora |
 | system_settings | Configurações globais + tema (JSON) |
 
 ## Contas de Teste

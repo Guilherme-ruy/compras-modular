@@ -13,7 +13,7 @@ async function main() {
   console.log('🌱 Seeding database...');
 
   // ── Roles ──────────────────────────────────────────────────────────────
-  const roleNames = ['SUPERADMIN', 'ADMIN', 'APROVADOR', 'COMPRADOR', 'REQUISITANTE', 'VIEWER'];
+  const roleNames = ['SUPERADMIN', 'TENANT_ADMIN', 'ADMIN', 'APROVADOR', 'COMPRADOR', 'REQUISITANTE', 'VIEWER'];
   const createdRoles: Record<string, string> = {};
 
   for (const name of roleNames) {
@@ -26,11 +26,24 @@ async function main() {
     console.log(`  ✔ Role: ${name}`);
   }
 
-  // ── System Settings ────────────────────────────────────────────────────
-  await prisma.systemSettings.upsert({
-    where: { id: 1 },
+  // ── Tenant ──────────────────────────────────────────────────────────────
+  const defaultTenant = await prisma.tenant.upsert({
+    where: { id: '11111111-1111-1111-1111-111111111111' },
     update: {},
     create: {
+      id: '11111111-1111-1111-1111-111111111111',
+      name: 'Empresa Padrão SaaS',
+      subscriptionStatus: 'active',
+    },
+  });
+  console.log(`  ✔ Tenant: ${defaultTenant.name}`);
+
+  // ── System Settings ────────────────────────────────────────────────────
+  await prisma.systemSettings.upsert({
+    where: { tenantId: defaultTenant.id },
+    update: {},
+    create: {
+      tenantId: defaultTenant.id,
       companyName: 'Compras Modular',
       document: '',
       themeConfig: { primaryColor: '#2563eb', logoUrl: '' },
@@ -42,12 +55,12 @@ async function main() {
   const adminDept = await prisma.department.upsert({
     where: { id: '00000000-0000-0000-0000-000000000001' },
     update: {},
-    create: { id: '00000000-0000-0000-0000-000000000001', name: 'Administração', isActive: true },
+    create: { id: '00000000-0000-0000-0000-000000000001', tenantId: defaultTenant.id, name: 'Administração', isActive: true },
   });
   const tiDept = await prisma.department.upsert({
     where: { id: '00000000-0000-0000-0000-000000000002' },
     update: {},
-    create: { id: '00000000-0000-0000-0000-000000000002', name: 'TI', isActive: true },
+    create: { id: '00000000-0000-0000-0000-000000000002', tenantId: defaultTenant.id, name: 'TI', isActive: true },
   });
   console.log(`  ✔ Departments: ${adminDept.name}, ${tiDept.name}`);
 
@@ -69,13 +82,13 @@ async function main() {
     { id: 'c0000000-0000-0000-0000-000000000014', name: 'Outros',                     parentId: null },
   ];
 
-  // Upsert parents first, then children
   for (const cat of categoryDefs) {
     await prisma.category.upsert({
       where: { id: cat.id },
       update: {},
       create: {
         id: cat.id,
+        tenantId: defaultTenant.id,
         name: cat.name,
         isActive: true,
         ...(cat.parentId ? { parentId: cat.parentId } : {}),
@@ -97,8 +110,10 @@ async function main() {
 
     const user = await prisma.user.create({
       data: {
+        tenantId: defaultTenant.id,
         name,
         email,
+        phone: '11999999999',
         passwordHash: hash,
         roleId: createdRoles[roleName],
         isActive: true,
@@ -117,19 +132,21 @@ async function main() {
     return user;
   }
 
-  await upsertUser('admin@empresa.com', 'Administrador', 'SUPERADMIN', [adminDept.id]);
+  await upsertUser('admin@empresa.com', 'Administrador Global', 'SUPERADMIN', [adminDept.id]);
+  await upsertUser('tenant@empresa.com', 'Administrador Empresa', 'TENANT_ADMIN', [adminDept.id]);
   const aprovador = await upsertUser('aprovador@empresa.com', 'João Aprovador', 'APROVADOR', [tiDept.id]);
   const comprador = await upsertUser('comprador@empresa.com', 'Maria Compradora', 'COMPRADOR', [tiDept.id]);
   await upsertUser('requisitante@empresa.com', 'Pedro Requisitante', 'REQUISITANTE', [tiDept.id]);
 
   // ── Workflow for TI ────────────────────────────────────────────────────
   const existingWorkflow = await prisma.approvalWorkflow.findFirst({
-    where: { departmentId: tiDept.id, isActive: true },
+    where: { departmentId: tiDept.id, tenantId: defaultTenant.id, isActive: true },
   });
 
   if (!existingWorkflow) {
     const workflow = await prisma.approvalWorkflow.create({
       data: {
+        tenantId: defaultTenant.id,
         departmentId: tiDept.id,
         version: 1,
         isActive: true,
@@ -149,9 +166,10 @@ async function main() {
     console.log('  ✔ Workflow: TI (1 etapa, 1 comprador)');
   }
 
-  console.log('\n✅ Seed concluído!');
-  console.log('\n📋 Contas de teste (senha: 123456):');
+  console.log('\\n✅ Seed concluído!');
+  console.log('\\n📋 Contas de teste (senha: 123456):');
   console.log('   admin@empresa.com         → SUPERADMIN');
+  console.log('   tenant@empresa.com        → TENANT_ADMIN');
   console.log('   aprovador@empresa.com      → APROVADOR  (TI)');
   console.log('   comprador@empresa.com      → COMPRADOR  (TI)');
   console.log('   requisitante@empresa.com   → REQUISITANTE (TI)');

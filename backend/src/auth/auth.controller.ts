@@ -2,6 +2,7 @@ import { Body, Controller, HttpCode, HttpStatus, Post, UseGuards } from '@nestjs
 import { ApiOperation, ApiTags, ApiBearerAuth } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
+import { RegisterDto } from './dto/register.dto';
 import { ForgotPasswordDto, ResetPasswordDto, ChangePasswordDto } from './dto/password.dto';
 import { JwtAuthGuard } from './auth.guard';
 import { CurrentUser } from '../common/decorators/current-user.decorator';
@@ -16,6 +17,12 @@ export class AuthController {
   @ApiOperation({ summary: 'Login e obtenção de token JWT' })
   login(@Body() dto: LoginDto) {
     return this.authService.login(dto.email, dto.password);
+  }
+
+  @Post('register')
+  @ApiOperation({ summary: 'Criar nova conta de empresa (SaaS)' })
+  register(@Body() dto: RegisterDto) {
+    return this.authService.signUp(dto.companyName, dto.email, dto.phone || '', dto.password);
   }
 
   // ─── Fluxo 1: Esqueci minha senha ───────────────────────
