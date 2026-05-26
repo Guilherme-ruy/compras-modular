@@ -1,5 +1,5 @@
 import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, ShoppingCart, Settings, Users, Building2, GitMerge, Store, Layers, LogOut } from 'lucide-react';
+import { LayoutDashboard, ShoppingCart, Settings, Users, Building2, GitMerge, Store, Layers, LogOut, BarChart2 } from 'lucide-react';
 import { cn } from '../../utils/cn';
 import { useAuth } from '../../contexts/AuthContext';
 
@@ -8,8 +8,9 @@ export function Sidebar() {
 
     const routes = [
         { path: '/app/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
-        { path: '/app/purchases', icon: ShoppingCart, label: 'Pedidos' },
-        { path: '/app/suppliers', icon: Store, label: 'Fornecedores' },
+        { path: '/app/purchases',  icon: ShoppingCart, label: 'Pedidos' },
+        { path: '/app/suppliers',  icon: Store,        label: 'Fornecedores' },
+        { path: '/app/relatorios', icon: BarChart2,    label: 'Relatórios' },
         ...(['SUPERADMIN', 'ADMIN'].includes(user?.roleName ?? '') ? [
             { path: '/app/workflows', icon: GitMerge, label: 'Fluxos (Regras)' },
             { path: '/app/users', icon: Users, label: 'Usuários Interno' },

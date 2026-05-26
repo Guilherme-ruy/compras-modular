@@ -31,6 +31,9 @@ export class PurchasesService {
     query: {
       status?: string;
       departmentId?: string;
+      supplierId?: string;
+      startDate?: string;
+      endDate?: string;
       search?: string;
       page?: number;
       perPage?: number;
@@ -44,6 +47,9 @@ export class PurchasesService {
       return this.purchasesRepository.findAll({
         isAdmin: true,
         departmentFilter: query.departmentId,
+        supplierId: query.supplierId,
+        startDate: query.startDate,
+        endDate: query.endDate,
         status: query.status,
         search: query.search,
         page: query.page ?? 1,
@@ -62,12 +68,57 @@ export class PurchasesService {
       requesterId: userId,
       departmentIds,
       departmentFilter: query.departmentId,
+      supplierId: query.supplierId,
+      startDate: query.startDate,
+      endDate: query.endDate,
       status: query.status,
       search: query.search,
       page: query.page ?? 1,
       perPage: query.perPage ?? 20,
       sortBy: query.sortBy,
       sortOrder: query.sortOrder,
+    });
+  }
+
+  async findAllForExport(
+    userId: string,
+    roleName: string,
+    query: {
+      status?: string;
+      departmentId?: string;
+      supplierId?: string;
+      startDate?: string;
+      endDate?: string;
+      search?: string;
+    },
+  ) {
+    const isAdmin = ['SUPERADMIN', 'ADMIN', 'VIEWER'].includes(roleName.toUpperCase());
+
+    if (isAdmin) {
+      return this.purchasesRepository.findAllForExport({
+        isAdmin: true,
+        departmentFilter: query.departmentId,
+        supplierId: query.supplierId,
+        startDate: query.startDate,
+        endDate: query.endDate,
+        status: query.status,
+        search: query.search,
+      });
+    }
+
+    const user = await this.usersRepository.findById(userId);
+    if (!user) throw new NotFoundException('Usuário não encontrado');
+    const departmentIds = user.departments.map((d: any) => d.id);
+
+    return this.purchasesRepository.findAllForExport({
+      requesterId: userId,
+      departmentIds,
+      departmentFilter: query.departmentId,
+      supplierId: query.supplierId,
+      startDate: query.startDate,
+      endDate: query.endDate,
+      status: query.status,
+      search: query.search,
     });
   }
 

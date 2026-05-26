@@ -20,6 +20,9 @@ export class PurchasesController {
   @ApiOperation({ summary: 'Listar pedidos de compra' })
   @ApiQuery({ name: 'status', required: false })
   @ApiQuery({ name: 'departmentId', required: false })
+  @ApiQuery({ name: 'supplierId', required: false })
+  @ApiQuery({ name: 'startDate', required: false })
+  @ApiQuery({ name: 'endDate', required: false })
   @ApiQuery({ name: 'search', required: false })
   @ApiQuery({ name: 'page', required: false })
   @ApiQuery({ name: 'perPage', required: false })
@@ -27,6 +30,9 @@ export class PurchasesController {
     @CurrentUser() user: CurrentUserData,
     @Query('status') status?: string,
     @Query('departmentId') departmentId?: string,
+    @Query('supplierId') supplierId?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
     @Query('search') search?: string,
     @Query('page') page?: string,
     @Query('perPage') perPage?: string,
@@ -36,11 +42,36 @@ export class PurchasesController {
     return this.purchasesService.findAll(user.id, user.roleName, {
       status,
       departmentId,
+      supplierId,
+      startDate,
+      endDate,
       search,
       page: page ? parseInt(page, 10) : 1,
       perPage: perPage ? parseInt(perPage, 10) : 20,
       sortBy,
       sortOrder,
+    });
+  }
+
+  @Get('export')
+  @ApiOperation({ summary: 'Exportar todos os pedidos para relatório (sem paginação)' })
+  @ApiQuery({ name: 'status', required: false })
+  @ApiQuery({ name: 'departmentId', required: false })
+  @ApiQuery({ name: 'supplierId', required: false })
+  @ApiQuery({ name: 'startDate', required: false })
+  @ApiQuery({ name: 'endDate', required: false })
+  @ApiQuery({ name: 'search', required: false })
+  exportAll(
+    @CurrentUser() user: CurrentUserData,
+    @Query('status') status?: string,
+    @Query('departmentId') departmentId?: string,
+    @Query('supplierId') supplierId?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('search') search?: string,
+  ) {
+    return this.purchasesService.findAllForExport(user.id, user.roleName, {
+      status, departmentId, supplierId, startDate, endDate, search,
     });
   }
 
