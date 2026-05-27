@@ -193,6 +193,10 @@ export class StripeService {
     trialRemainingDays: number;
     renewalDate: Date | null;
     hasStripeCustomer: boolean;
+    planName?: string | null;
+    planPrice?: number | null;
+    currency?: string | null;
+    adminEmail?: string | null;
   }> {
     const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
     if (!tenant) throw new Error('Tenant não encontrado');
@@ -266,9 +270,9 @@ export class StripeService {
       if (trialRemainingDays < 0) trialRemainingDays = 0;
     }
 
-    let planName = null;
-    let planPrice = null;
-    let currency = null;
+    let planName: string | null = null;
+    let planPrice: number | null = null;
+    let currency: string | null = null;
 
     if (tenant.stripeSubscriptionId && subscriptionStatus === 'active') {
       try {
@@ -281,7 +285,14 @@ export class StripeService {
           if (priceObj) {
             planPrice = priceObj.unit_amount;
             currency = priceObj.currency;
-            if (priceObj.product && (priceObj.product as any).name) {
+            if (priceObj.product && typeof priceObj.product === 'string') {
+              try {
+                const product = await this.stripe.products.retrieve(priceObj.product);
+                planName = product.name;
+              } catch (err: any) {
+                this.logger.error(`Falha ao buscar produto ${priceObj.product}: ${err.message}`);
+              }
+            } else if (priceObj.product && (priceObj.product as any).name) {
               planName = (priceObj.product as any).name;
             }
           }
@@ -292,7 +303,7 @@ export class StripeService {
     }
 
     // Busca o email do administrador (primeiro usuário ou TENANT_ADMIN)
-    let adminEmail = null;
+    let adminEmail: string | null = null;
     try {
       const adminUser = await this.prisma.user.findFirst({
         where: {
