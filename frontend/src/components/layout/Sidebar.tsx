@@ -12,7 +12,6 @@ export function Sidebar() {
         { path: '/app/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
         { path: '/app/purchases', icon: ShoppingCart, label: 'Pedidos' },
         { path: '/app/suppliers', icon: Store, label: 'Fornecedores' },
-        { path: '/app/relatorios', icon: BarChart2, label: 'Relatórios' },
         ...(['SUPERADMIN', 'TENANT_ADMIN', 'ADMIN', 'Administrador'].includes(user?.roleName ?? '') ? [
             { path: '/app/workflows', icon: GitMerge, label: 'Fluxos (Regras)' },
             { path: '/app/users', icon: Users, label: 'Usuários Interno' },
@@ -20,18 +19,30 @@ export function Sidebar() {
             { path: '/app/categories', icon: Layers, label: 'Categorias' },
         ] : []),
         { path: '/app/settings', icon: Settings, label: 'Configurações' },
+        { path: '/app/relatorios', icon: BarChart2, label: 'Relatórios' },
     ];
 
     return (
         <aside className="w-64 bg-slate-900 border-r border-slate-800 flex flex-col h-full shrink-0">
-            {/* Logo e Nome da Empresa */}
-            <div className="h-16 flex flex-col justify-center px-6 border-b border-slate-800 bg-slate-900 shrink-0">
+
+            {/* Logo + nome da empresa — h-16 alinhado com o Topbar */}
+            <div className="h-16 shrink-0 flex items-center gap-3 px-5 border-b border-slate-800">
                 {logoUrl ? (
-                    <img src={logoUrl} alt="Logo" className="max-h-6 max-w-[160px] object-contain object-left" />
+                    <img
+                        src={logoUrl}
+                        alt="Logo"
+                        className="max-h-8 max-w-[140px] object-contain object-left"
+                    />
                 ) : (
-                    <h1 className="text-white font-extrabold text-base tracking-tight truncate leading-tight">HQA Compras</h1>
+                    <span className="text-base font-extrabold tracking-tight text-white truncate">
+                        HQA Compras
+                    </span>
                 )}
-                <span className="text-slate-400 text-[11px] font-medium truncate mt-0.5 uppercase tracking-wider">{companyName}</span>
+                {companyName && (
+                    <span className="text-[11px] font-medium uppercase tracking-wider text-slate-400 truncate">
+                        {companyName}
+                    </span>
+                )}
             </div>
 
             {/* Nav */}
