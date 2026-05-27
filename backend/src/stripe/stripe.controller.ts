@@ -6,46 +6,20 @@ import {
   Res,
   UseGuards,
   Headers,
-  RawBodyRequest,
   HttpCode,
 } from '@nestjs/common';
-import { Request, Response } from 'express';
 import { StripeService } from './stripe.service';
 import { JwtAuthGuard, RolesGuard } from '../auth/auth.guard';
 import { Roles } from '../common/decorators/roles.decorator';
-import { PrismaService } from '../prisma/prisma.service';
 
 @Controller('stripe')
 export class StripeController {
-  constructor(
-    private readonly stripeService: StripeService,
-    private readonly prisma: PrismaService
-  ) {}
+  constructor(private readonly stripeService: StripeService) {}
 
   @UseGuards(JwtAuthGuard)
   @Get('status')
   async getStatus(@Req() req: any) {
-    const tenantId = req.user.tenantId;
-    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
-    
-    let trialRemainingDays = 0;
-    if (tenant?.createdAt && tenant?.subscriptionStatus === 'trialing') {
-      const trialEnd = new Date(tenant.createdAt.getTime() + 30 * 24 * 60 * 60 * 1000);
-      trialRemainingDays = Math.ceil((trialEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
-      if (trialRemainingDays < 0) trialRemainingDays = 0;
-    }
-
-    let renewalDate: Date | null = null;
-    if (tenant?.subscriptionStatus === 'active' && tenant?.stripeSubscriptionId) {
-      renewalDate = await this.stripeService.getSubscriptionRenewalDate(tenant.stripeSubscriptionId);
-    }
-
-    return {
-      status: tenant?.subscriptionStatus || 'inactive',
-      hasStripeCustomer: !!tenant?.stripeCustomerId,
-      trialRemainingDays,
-      renewalDate
-    };
+    return this.stripeService.syncAndGetStatus(req.user.tenantId);
   }
 
   @UseGuards(JwtAuthGuard, RolesGuard)

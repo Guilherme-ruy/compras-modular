@@ -187,4 +187,90 @@ export class StripeService {
       return null;
     }
   }
+
+  async syncAndGetStatus(tenantId: string): Promise<{
+    status: string;
+    trialRemainingDays: number;
+    renewalDate: Date | null;
+    hasStripeCustomer: boolean;
+  }> {
+    const tenant = await this.prisma.tenant.findUnique({ where: { id: tenantId } });
+    if (!tenant) throw new Error('Tenant não encontrado');
+
+    let subscriptionStatus = tenant.subscriptionStatus ?? 'inactive';
+    let renewalDate: Date | null = null;
+
+    // DB já está ativo com ID de assinatura: só busca a data de renovação
+    if (subscriptionStatus === 'active' && tenant.stripeSubscriptionId) {
+      renewalDate = await this.getSubscriptionRenewalDate(tenant.stripeSubscriptionId);
+      return { status: 'active', trialRemainingDays: 0, renewalDate, hasStripeCustomer: true };
+    }
+
+    // Status não-ativo no banco: consulta a Stripe para garantir consistência
+    if (tenant.stripeSubscriptionId) {
+      try {
+        const sub = await this.stripe.subscriptions.retrieve(tenant.stripeSubscriptionId);
+        const stripeStatus: string = sub.status;
+        // Mapeia status da Stripe para nossos valores
+        const mapped =
+          stripeStatus === 'active' ? 'active'
+          : stripeStatus === 'trialing' ? 'trialing'
+          : stripeStatus === 'canceled' ? 'canceled'
+          : 'inactive';
+
+        if (mapped !== subscriptionStatus) {
+          await this.prisma.tenant.update({
+            where: { id: tenantId },
+            data: { subscriptionStatus: mapped },
+          });
+          this.logger.log(`🔄 Status sincronizado via API: ${subscriptionStatus} → ${mapped} (tenant ${tenantId})`);
+          subscriptionStatus = mapped;
+        }
+
+        if (stripeStatus === 'active') {
+          renewalDate = new Date(sub.current_period_end * 1000);
+        }
+      } catch (err: any) {
+        this.logger.error(`Falha ao consultar assinatura ${tenant.stripeSubscriptionId}: ${err.message}`);
+      }
+    } else if (tenant.stripeCustomerId) {
+      // Sem subscription ID mas com customer ID: procura assinaturas ativas/trialing na Stripe
+      try {
+        const subs = await this.stripe.subscriptions.list({
+          customer: tenant.stripeCustomerId,
+          limit: 5,
+        });
+
+        const activeSub = subs.data.find((s: any) => s.status === 'active' || s.status === 'trialing');
+        if (activeSub) {
+          const mapped = activeSub.status === 'active' ? 'active' : 'trialing';
+          await this.prisma.tenant.update({
+            where: { id: tenantId },
+            data: { subscriptionStatus: mapped, stripeSubscriptionId: activeSub.id },
+          });
+          this.logger.log(`🔄 Assinatura encontrada na Stripe e sincronizada: ${activeSub.id} (${mapped})`);
+          subscriptionStatus = mapped;
+          if (mapped === 'active') {
+            renewalDate = new Date(activeSub.current_period_end * 1000);
+          }
+        }
+      } catch (err: any) {
+        this.logger.error(`Falha ao listar assinaturas do customer ${tenant.stripeCustomerId}: ${err.message}`);
+      }
+    }
+
+    let trialRemainingDays = 0;
+    if (tenant.createdAt && subscriptionStatus === 'trialing') {
+      const trialEnd = new Date(tenant.createdAt.getTime() + 30 * 24 * 60 * 60 * 1000);
+      trialRemainingDays = Math.ceil((trialEnd.getTime() - Date.now()) / (1000 * 60 * 60 * 24));
+      if (trialRemainingDays < 0) trialRemainingDays = 0;
+    }
+
+    return {
+      status: subscriptionStatus,
+      trialRemainingDays,
+      renewalDate,
+      hasStripeCustomer: !!tenant.stripeCustomerId,
+    };
+  }
 }

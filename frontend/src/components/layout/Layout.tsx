@@ -26,13 +26,29 @@ export function Layout({ children }: { children: React.ReactNode }) {
             setShowTrialBanner(false);
         }
 
+        // Detect if the user just returned from a successful Stripe checkout.
+        // The Stripe webhook is async — the DB may still show 'trialing' for a few seconds.
+        const params = new URLSearchParams(location.search);
+        const isSuccess = params.get('success') === 'true';
+
         api.get('/stripe/status').then((res) => {
-            if (res.data.status === 'trialing' && res.data.trialRemainingDays !== undefined) {
-                setTrialRemainingDays(res.data.trialRemainingDays);
+            const currentStatus = res.data.status;
+
+            // Webhook not yet processed: treat as active so the banner doesn't flash
+            if (isSuccess && currentStatus === 'trialing') {
+                setStatus('active');
+                setTrialRemainingDays(null);
+                return;
             }
-            setStatus(res.data.status);
+
+            setStatus(currentStatus);
+            if (currentStatus === 'trialing' && res.data.trialRemainingDays !== undefined) {
+                setTrialRemainingDays(res.data.trialRemainingDays);
+            } else {
+                setTrialRemainingDays(null);
+            }
         }).catch(err => console.error(err));
-    }, []);
+    }, [location.search]);
 
     const handleDismissBanner = () => {
         setShowTrialBanner(false);
@@ -53,26 +69,32 @@ export function Layout({ children }: { children: React.ReactNode }) {
     }
 
     return (
-        <div className="flex h-screen w-screen overflow-hidden bg-slate-50 font-sans">
-            <Sidebar />
-            <div className="flex flex-col flex-1 overflow-hidden relative">
-                {isAdmin && showTrialBanner && trialRemainingDays !== null && status === 'trialing' && (
-                    <TrialBanner 
-                        remainingDays={trialRemainingDays} 
-                        onDismiss={handleDismissBanner} 
-                    />
-                )}
-                <ReadOnlyBanner status={status} />
-                <Topbar 
-                    trialRemainingDays={isAdmin && !showTrialBanner && status === 'trialing' ? trialRemainingDays : null} 
-                    onShowTrialBanner={handleShowBanner}
+        <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-50 font-sans">
+            {/* Banners de largura total — ficam acima do sidebar e topbar */}
+            {isAdmin && showTrialBanner && trialRemainingDays !== null && status === 'trialing' && (
+                <TrialBanner
+                    remainingDays={trialRemainingDays}
+                    onDismiss={handleDismissBanner}
                 />
-                <main className="flex-1 overflow-y-auto p-6">
-                    <div className="max-w-7xl mx-auto">
-                        {children}
-                    </div>
-                </main>
+            )}
+            <ReadOnlyBanner status={status} />
+
+            {/* Corpo principal: sidebar + área de conteúdo sempre alinhados */}
+            <div className="flex flex-1 overflow-hidden">
+                <Sidebar />
+                <div className="flex flex-col flex-1 overflow-hidden">
+                    <Topbar
+                        trialRemainingDays={isAdmin && !showTrialBanner && status === 'trialing' ? trialRemainingDays : null}
+                        onShowTrialBanner={handleShowBanner}
+                    />
+                    <main className="flex-1 overflow-y-auto p-6">
+                        <div className="max-w-7xl mx-auto">
+                            {children}
+                        </div>
+                    </main>
+                </div>
             </div>
+
             {isUpgrade && <SubscriptionModal />}
         </div>
     );
