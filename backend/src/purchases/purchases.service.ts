@@ -30,8 +30,8 @@ export class PurchasesService {
     roleName: string,
     query: {
       status?: string;
-      departmentId?: string;
-      supplierId?: string;
+      departmentId?: string | string[];
+      supplierId?: string | string[];
       startDate?: string;
       endDate?: string;
       search?: string;
@@ -85,8 +85,8 @@ export class PurchasesService {
     roleName: string,
     query: {
       status?: string;
-      departmentId?: string;
-      supplierId?: string;
+      departmentId?: string | string[];
+      supplierId?: string | string[];
       startDate?: string;
       endDate?: string;
       search?: string;

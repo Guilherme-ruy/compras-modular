@@ -8,7 +8,7 @@ export class DepartmentsService {
 
   findAll(query: {
     search?: string;
-    activeOnly?: boolean;
+    isActive?: boolean;
     page?: number;
     perPage?: number;
     sortBy?: string;
@@ -16,7 +16,7 @@ export class DepartmentsService {
   }) {
     return this.departmentsRepository.findAll({
       search: query.search,
-      activeOnly: query.activeOnly,
+      isActive: query.isActive,
       page: query.page ?? 1,
       perPage: query.perPage ?? 50,
       sortBy: query.sortBy,

@@ -26,6 +26,7 @@ type StandardTableProps<T> = {
   hasActiveFilters?: boolean;
   emptyTitle: string;
   emptyDescription?: string;
+  emptyAction?: ReactNode;
   noResultsTitle?: string;
   noResultsDescription?: string;
   minWidthClassName?: string;
@@ -56,6 +57,7 @@ export function StandardTable<T>({
   hasActiveFilters = false,
   emptyTitle,
   emptyDescription,
+  emptyAction,
   noResultsTitle = 'Nenhum resultado encontrado',
   noResultsDescription = 'Tente ajustar os filtros para ampliar os resultados.',
   minWidthClassName = 'min-w-[720px]',
@@ -131,6 +133,11 @@ export function StandardTable<T>({
             <p className="text-sm font-semibold text-slate-800">{title}</p>
             {description && <p className="text-sm text-slate-500">{description}</p>}
           </div>
+          {!hasActiveFilters && emptyAction && (
+            <div className="mt-2">
+              {emptyAction}
+            </div>
+          )}
         </div>
       );
     }

@@ -19,7 +19,7 @@ export function Sidebar() {
             { path: '/app/categories', icon: Layers, label: 'Categorias' },
         ] : []),
         { path: '/app/settings', icon: Settings, label: 'Configurações' },
-        { path: '/app/relatorios', icon: BarChart2, label: 'Relatórios' },
+        { path: '/app/reports', icon: BarChart2, label: 'Relatórios' },
     ];
 
     return (

@@ -29,8 +29,8 @@ export class PurchasesController {
   findAll(
     @CurrentUser() user: CurrentUserData,
     @Query('status') status?: string,
-    @Query('departmentId') departmentId?: string,
-    @Query('supplierId') supplierId?: string,
+    @Query('departmentId') departmentId?: string | string[],
+    @Query('supplierId') supplierId?: string | string[],
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('search') search?: string,
@@ -64,8 +64,8 @@ export class PurchasesController {
   exportAll(
     @CurrentUser() user: CurrentUserData,
     @Query('status') status?: string,
-    @Query('departmentId') departmentId?: string,
-    @Query('supplierId') supplierId?: string,
+    @Query('departmentId') departmentId?: string | string[],
+    @Query('supplierId') supplierId?: string | string[],
     @Query('startDate') startDate?: string,
     @Query('endDate') endDate?: string,
     @Query('search') search?: string,

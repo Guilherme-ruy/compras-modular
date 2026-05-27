@@ -36,8 +36,8 @@ export type ReportFilters = {
   startDate: string;
   endDate: string;
   status: string;
-  departmentId: string;
-  supplierId: string;
+  departmentId: string[];
+  supplierId: string[];
   search: string;
 };
 

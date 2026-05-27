@@ -6,8 +6,8 @@ export async function fetchReportData(filters: ReportFilters): Promise<ExportPur
   if (filters.startDate)    params.set('startDate',    filters.startDate);
   if (filters.endDate)      params.set('endDate',      filters.endDate);
   if (filters.status)       params.set('status',       filters.status);
-  if (filters.departmentId) params.set('departmentId', filters.departmentId);
-  if (filters.supplierId)   params.set('supplierId',   filters.supplierId);
+  filters.departmentId?.forEach(id => params.append('departmentId', id));
+  filters.supplierId?.forEach(id => params.append('supplierId', id));
   if (filters.search)       params.set('search',       filters.search.trim());
 
   const res = await api.get<ExportPurchase[]>(`/purchases/export?${params.toString()}`);

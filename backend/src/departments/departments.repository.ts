@@ -4,7 +4,7 @@ import { Prisma } from '@prisma/client';
 
 export interface DepartmentListParams {
   search?: string;
-  activeOnly?: boolean;
+  isActive?: boolean;
   page: number;
   perPage: number;
   sortBy?: string;
@@ -16,10 +16,10 @@ export class DepartmentsRepository {
   constructor(private readonly prisma: PrismaService) {}
 
   async findAll(params: DepartmentListParams) {
-    const { search, activeOnly, page, perPage, sortBy = 'name', sortOrder = 'asc' } = params;
+    const { search, isActive, page, perPage, sortBy = 'name', sortOrder = 'asc' } = params;
 
     const where: Prisma.DepartmentWhereInput = {};
-    if (activeOnly) where.isActive = true;
+    if (isActive !== undefined) where.isActive = isActive;
     if (search) {
       where.name = { contains: search, mode: 'insensitive' };
     }

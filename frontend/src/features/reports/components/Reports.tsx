@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Search, FileText, FileSpreadsheet, Download, RefreshCw, AlertCircle } from 'lucide-react';
+import { Search, FileText, FileSpreadsheet, Download, RefreshCw, AlertCircle, Filter, Settings2, ChevronDown, ChevronUp } from 'lucide-react';
 import { TABLE_FILTER_CONTROL_CLASS } from '../../../components/ui/table/TableFilters';
+import { MultiSelect } from '../../../components/ui/MultiSelect';
 import { ColumnConfigurator } from './ColumnConfigurator';
 import { fetchReportData, fetchDepartmentsForReport, fetchSuppliersForReport } from '../api/reports.api';
 import { exportCsv, exportXlsx, exportPdf, generateRows } from '../utils/exporters';
@@ -12,8 +13,8 @@ const EMPTY_FILTERS: ReportFilters = {
   startDate:    '',
   endDate:      '',
   status:       '',
-  departmentId: '',
-  supplierId:   '',
+  departmentId: [],
+  supplierId:   [],
   search:       '',
 };
 
@@ -34,6 +35,8 @@ export default function Reports() {
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
   const [exporting, setExporting] = useState<'csv' | 'xlsx' | 'pdf' | null>(null);
+
+  const [showColumnConfig, setShowColumnConfig] = useState(false);
 
   // Load select options once
   useEffect(() => {
@@ -100,24 +103,98 @@ export default function Reports() {
     setFormFilters((prev) => ({ ...prev, [key]: value }));
   }
 
+  function applyPreset(days: number, months: number = 0) {
+    const end = new Date();
+    const start = new Date();
+    if (days > 0) {
+      start.setDate(end.getDate() - days);
+    } else if (months > 0) {
+      start.setMonth(end.getMonth() - months);
+    }
+    setFormFilters((prev) => ({
+      ...prev,
+      startDate: start.toISOString().slice(0, 10),
+      endDate: end.toISOString().slice(0, 10),
+    }));
+  }
+
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-slate-800">Relatórios</h1>
-        <p className="mt-1 text-sm text-slate-500">
-          Configure filtros, personalize colunas e exporte dados de pedidos de compra.
-        </p>
+      {/* Header and Action Buttons */}
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-bold text-slate-800">Relatórios</h1>
+          <p className="mt-1 text-sm text-slate-500">
+            Configure filtros, personalize colunas e exporte dados de pedidos de compra.
+          </p>
+        </div>
+        
+        {/* Export buttons moved to header */}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            disabled={!canExport || exporting !== null}
+            onClick={() => handleExport('csv')}
+            className="inline-flex h-9 items-center gap-2 rounded-lg border border-slate-200 bg-white px-4 text-sm font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {exporting === 'csv' ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+            CSV
+          </button>
+          <button
+            type="button"
+            disabled={!canExport || exporting !== null}
+            onClick={() => handleExport('xlsx')}
+            className="inline-flex h-9 items-center gap-2 rounded-lg border border-emerald-200 bg-emerald-50 px-4 text-sm font-semibold text-emerald-700 shadow-sm transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {exporting === 'xlsx' ? <RefreshCw className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
+            Excel
+          </button>
+          <button
+            type="button"
+            disabled={!canExport || exporting !== null}
+            onClick={() => handleExport('pdf')}
+            className="inline-flex h-9 items-center gap-2 rounded-lg border border-red-200 bg-red-50 px-4 text-sm font-semibold text-red-700 shadow-sm transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40"
+          >
+            {exporting === 'pdf' ? <RefreshCw className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+            PDF
+          </button>
+        </div>
       </div>
 
       {/* Filters */}
       <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="mb-4 text-sm font-semibold text-slate-700">Filtros</h2>
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {/* Date range */}
+        <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <h2 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+            <Filter className="h-4 w-4 text-slate-400" />
+            Filtros
+          </h2>
+          {/* Presets */}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-xs text-slate-500 mr-1">Predefinições:</span>
+            {[
+              { label: '30 Dias', d: 30, m: 0 },
+              { label: '60 Dias', d: 60, m: 0 },
+              { label: '90 Dias', d: 90, m: 0 },
+              { label: '6 Meses', d: 0, m: 6 },
+              { label: '12 Meses', d: 0, m: 12 },
+            ].map(preset => (
+              <button
+                key={preset.label}
+                type="button"
+                onClick={() => applyPreset(preset.d, preset.m)}
+                className="rounded border border-slate-200 bg-slate-50 px-2 py-1 text-xs font-medium text-slate-600 hover:bg-slate-100 hover:text-slate-800 transition-colors"
+              >
+                {preset.label}
+              </button>
+            ))}
+          </div>
+        </div>
+        
+        <div className="grid grid-cols-1 gap-x-4 gap-y-4 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 items-end">
+          {/* Dates */}
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Data início
+            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              Data Início
             </label>
             <input
               type="date"
@@ -127,8 +204,8 @@ export default function Reports() {
             />
           </div>
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Data fim
+            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              Data Fim
             </label>
             <input
               type="date"
@@ -140,7 +217,7 @@ export default function Reports() {
 
           {/* Status */}
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
               Status
             </label>
             <select
@@ -155,56 +232,30 @@ export default function Reports() {
             </select>
           </div>
 
-          {/* Department */}
+          {/* Department MultiSelect */}
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Departamento
+            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              Departamentos
             </label>
-            <select
+            <MultiSelect
+              options={departments.map(d => ({ value: d.id, label: d.name }))}
               value={formFilters.departmentId}
-              onChange={(e) => setFilter('departmentId', e.target.value)}
-              className={TABLE_FILTER_CONTROL_CLASS}
-            >
-              <option value="">Todos</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>{d.name}</option>
-              ))}
-            </select>
+              onChange={(v) => setFilter('departmentId', v)}
+              placeholder="Todos"
+            />
           </div>
 
-          {/* Supplier */}
+          {/* Supplier MultiSelect */}
           <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Fornecedor
+            <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wide text-slate-500">
+              Fornecedores
             </label>
-            <select
+            <MultiSelect
+              options={suppliers.map(s => ({ value: s.id, label: s.companyName }))}
               value={formFilters.supplierId}
-              onChange={(e) => setFilter('supplierId', e.target.value)}
-              className={TABLE_FILTER_CONTROL_CLASS}
-            >
-              <option value="">Todos</option>
-              {suppliers.map((s) => (
-                <option key={s.id} value={s.id}>{s.companyName}</option>
-              ))}
-            </select>
-          </div>
-
-          {/* Search */}
-          <div>
-            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Busca (observações)
-            </label>
-            <div className="relative">
-              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-              <input
-                type="text"
-                value={formFilters.search}
-                onChange={(e) => setFilter('search', e.target.value)}
-                onKeyDown={(e) => e.key === 'Enter' && applyFilters()}
-                placeholder="Buscar em observações…"
-                className={`${TABLE_FILTER_CONTROL_CLASS} pl-9`}
-              />
-            </div>
+              onChange={(v) => setFilter('supplierId', v)}
+              placeholder="Todos"
+            />
           </div>
         </div>
 
@@ -228,21 +279,41 @@ export default function Reports() {
         </div>
       </div>
 
-      {/* Column configurator */}
-      <div className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-        <h2 className="mb-4 text-sm font-semibold text-slate-700">
-          Colunas do relatório
-          <span className="ml-2 text-xs font-normal text-slate-400">
-            Arraste para reordenar. Clique em + para adicionar.
-          </span>
-        </h2>
-        <ColumnConfigurator selected={selectedCols} onChange={setSelectedCols} />
+      {/* Column configurator (Collapsible) */}
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
+        <button
+          type="button"
+          onClick={() => setShowColumnConfig(!showColumnConfig)}
+          className="w-full flex items-center justify-between p-5 bg-white hover:bg-slate-50 transition-colors"
+        >
+          <div className="flex flex-col items-start">
+            <h2 className="text-sm font-semibold text-slate-700 flex items-center gap-2">
+              <Settings2 className="h-4 w-4 text-slate-400" />
+              Personalizar Colunas do Relatório
+            </h2>
+            {!showColumnConfig && (
+              <span className="mt-1 text-xs text-slate-500">
+                {selectedCols.length} colunas selecionadas
+              </span>
+            )}
+          </div>
+          {showColumnConfig ? <ChevronUp className="h-5 w-5 text-slate-400" /> : <ChevronDown className="h-5 w-5 text-slate-400" />}
+        </button>
+        
+        {showColumnConfig && (
+          <div className="p-5 border-t border-slate-100 bg-slate-50/50">
+            <p className="mb-4 text-xs font-normal text-slate-500">
+              Arraste para reordenar. Clique em + para adicionar.
+            </p>
+            <ColumnConfigurator selected={selectedCols} onChange={setSelectedCols} />
+          </div>
+        )}
       </div>
 
-      {/* Preview + export */}
-      <div className="rounded-xl border border-slate-200 bg-white shadow-sm">
+      {/* Preview table */}
+      <div className="rounded-xl border border-slate-200 bg-white shadow-sm overflow-hidden">
         {/* Info bar */}
-        <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-3">
+        <div className="flex flex-wrap items-center justify-between gap-3 bg-slate-50 border-b border-slate-100 px-5 py-3">
           <div className="text-sm text-slate-600">
             {loading ? (
               <span className="inline-flex items-center gap-2 text-slate-400">
@@ -257,50 +328,19 @@ export default function Reports() {
                 <span className="font-semibold text-slate-800">{data.length}</span> pedidos encontrados
                 {data.length > PREVIEW_LIMIT && (
                   <span className="ml-1 text-slate-400">
-                    — prévia dos primeiros {PREVIEW_LIMIT}
+                    — exibindo os primeiros {PREVIEW_LIMIT}
                   </span>
                 )}
               </>
             )}
           </div>
-
-          {/* Export buttons */}
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              disabled={!canExport || exporting !== null}
-              onClick={() => handleExport('csv')}
-              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-slate-200 bg-white px-3 text-xs font-semibold text-slate-700 shadow-sm transition-colors hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {exporting === 'csv' ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-              CSV
-            </button>
-            <button
-              type="button"
-              disabled={!canExport || exporting !== null}
-              onClick={() => handleExport('xlsx')}
-              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-emerald-200 bg-emerald-50 px-3 text-xs font-semibold text-emerald-700 shadow-sm transition-colors hover:bg-emerald-100 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {exporting === 'xlsx' ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <FileSpreadsheet className="h-3.5 w-3.5" />}
-              Excel
-            </button>
-            <button
-              type="button"
-              disabled={!canExport || exporting !== null}
-              onClick={() => handleExport('pdf')}
-              className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-red-200 bg-red-50 px-3 text-xs font-semibold text-red-700 shadow-sm transition-colors hover:bg-red-100 disabled:cursor-not-allowed disabled:opacity-40"
-            >
-              {exporting === 'pdf' ? <RefreshCw className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
-              PDF
-            </button>
-          </div>
         </div>
 
-        {/* Preview table */}
+        {/* Table wrapper */}
         <div className="overflow-x-auto">
           {selectedCols.length === 0 ? (
             <div className="py-16 text-center text-sm text-slate-400">
-              Selecione ao menos uma coluna para visualizar a prévia
+              Selecione ao menos uma coluna para visualizar o relatório
             </div>
           ) : loading ? (
             <div className="py-16 text-center text-sm text-slate-400">
@@ -318,20 +358,20 @@ export default function Reports() {
                   {selectedCols.map((col) => (
                     <th
                       key={col.id}
-                      className="whitespace-nowrap px-4 py-2.5 text-xs font-semibold uppercase tracking-wide text-slate-500"
+                      className="whitespace-nowrap px-4 py-3 text-xs font-semibold uppercase tracking-wider text-slate-500 bg-slate-50"
                     >
                       {col.label}
                     </th>
                   ))}
                 </tr>
               </thead>
-              <tbody className="divide-y divide-slate-50">
+              <tbody className="divide-y divide-slate-100 bg-white">
                 {previewRows.map((row, ri) => (
-                  <tr key={ri} className="hover:bg-slate-50">
+                  <tr key={ri} className="hover:bg-slate-50 transition-colors">
                     {row.map((cell, ci) => (
                       <td
                         key={ci}
-                        className="max-w-[240px] truncate px-4 py-2.5 text-slate-700"
+                        className="max-w-[240px] truncate px-4 py-3 text-slate-700"
                         title={cell}
                       >
                         {cell || <span className="text-slate-300">—</span>}
@@ -345,8 +385,8 @@ export default function Reports() {
         </div>
 
         {totalRows.length > PREVIEW_LIMIT && (
-          <div className="border-t border-slate-100 px-5 py-3 text-center text-xs text-slate-400">
-            {totalRows.length - PREVIEW_LIMIT} linha(s) adicionais incluídas na exportação
+          <div className="bg-slate-50 border-t border-slate-100 px-5 py-3 text-center text-xs font-medium text-slate-500">
+            {totalRows.length - PREVIEW_LIMIT} linha(s) adicionais incluídas na exportação (CSV/Excel/PDF)
           </div>
         )}
       </div>

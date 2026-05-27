@@ -79,6 +79,8 @@ export function WorkflowList() {
 
   const [searchInput, setSearchInput] = useState('');
   const [searchFilter, setSearchFilter] = useState('');
+  const [statusInput, setStatusInput] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
 
   const [confirmModal, setConfirmModal] = useState<{
     isOpen: boolean;
@@ -92,7 +94,7 @@ export function WorkflowList() {
     action: async () => { },
   });
 
-  const hasActiveFilters = Boolean(searchFilter);
+  const hasActiveFilters = Boolean(searchFilter) || Boolean(statusFilter);
 
   const roleNameById = useMemo(() => new Map(roles.map((role) => [role.id, role.name])), [roles]);
   const userNameById = useMemo(() => new Map(users.map((user) => [user.id, user.name])), [users]);
@@ -147,7 +149,9 @@ export function WorkflowList() {
         params.set('search', searchFilter.trim());
       }
 
-      params.set('activeOnly', 'true');
+      if (statusFilter) {
+        params.set('isActive', statusFilter);
+      }
 
       const response = await api.get(`/departments?${params.toString()}`);
       const normalized = normalizeListResponse<Department>(response.data, page, perPage);
@@ -159,7 +163,7 @@ export function WorkflowList() {
     } finally {
       setLoading(false);
     }
-  }, [page, perPage, searchFilter, sort]);
+  }, [page, perPage, searchFilter, statusFilter, sort]);
 
   useEffect(() => {
     fetchDependencies();
@@ -405,28 +409,47 @@ export function WorkflowList() {
       <TableFilters
         onApply={() => {
           setSearchFilter(searchInput);
+          setStatusFilter(statusInput);
           setPage(1);
         }}
         onClear={() => {
           setSearchInput('');
           setSearchFilter('');
+          setStatusInput('');
+          setStatusFilter('');
           setPage(1);
         }}
         hasActiveFilters={hasActiveFilters}
         applying={loading}
       >
-        <div className="xl:col-span-12">
-          <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Buscar departamento
-          </label>
-          <div className="relative">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
-            <input
-              value={searchInput}
-              onChange={(event) => setSearchInput(event.target.value)}
-              className={`${TABLE_FILTER_CONTROL_CLASS} pl-9`}
-              placeholder="Digite o nome do departamento"
-            />
+        <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:col-span-12">
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Buscar departamento
+            </label>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input
+                value={searchInput}
+                onChange={(event) => setSearchInput(event.target.value)}
+                className={`${TABLE_FILTER_CONTROL_CLASS} pl-9`}
+                placeholder="Digite o nome do departamento"
+              />
+            </div>
+          </div>
+          <div>
+            <label className="mb-1.5 block text-xs font-semibold uppercase tracking-wide text-slate-500">
+              Status
+            </label>
+            <select
+              value={statusInput}
+              onChange={(e) => setStatusInput(e.target.value)}
+              className={TABLE_FILTER_CONTROL_CLASS}
+            >
+              <option value="">Todos</option>
+              <option value="true">Ativos</option>
+              <option value="false">Inativos</option>
+            </select>
           </div>
         </div>
       </TableFilters>
@@ -448,6 +471,15 @@ export function WorkflowList() {
           hasActiveFilters={hasActiveFilters}
           emptyTitle="Nenhum departamento cadastrado"
           emptyDescription="Crie departamentos para configurar os fluxos de aprovacao."
+          emptyAction={
+            <button
+              type="button"
+              onClick={() => navigate('/app/departments')}
+              className="inline-flex items-center gap-2 rounded-lg bg-slate-900 px-4 py-2 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-slate-800"
+            >
+              Criar departamento
+            </button>
+          }
           noResultsTitle="Nenhum departamento encontrado"
           noResultsDescription="A busca aplicada nao retornou resultados."
           minWidthClassName="min-w-[1120px]"

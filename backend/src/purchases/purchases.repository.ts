@@ -25,8 +25,8 @@ export class PurchasesRepository {
   async findAll(params: {
     requesterId?: string;
     departmentIds?: string[];
-    departmentFilter?: string;
-    supplierId?: string;
+    departmentFilter?: string | string[];
+    supplierId?: string | string[];
     startDate?: string;
     endDate?: string;
     status?: string;
@@ -46,7 +46,9 @@ export class PurchasesRepository {
 
     const where: Prisma.PurchaseWhereInput = {};
     if (status) where.status = status;
-    if (supplierId) where.supplierId = supplierId;
+    if (supplierId) {
+      where.supplierId = Array.isArray(supplierId) ? { in: supplierId } : supplierId;
+    }
     if (startDate || endDate) {
       where.createdAt = {
         ...(startDate ? { gte: new Date(startDate) } : {}),
@@ -59,7 +61,7 @@ export class PurchasesRepository {
       ];
     }
     if (departmentFilter) {
-      where.departmentId = departmentFilter;
+      where.departmentId = Array.isArray(departmentFilter) ? { in: departmentFilter } : departmentFilter;
     }
 
     if (!isAdmin && requesterId && departmentIds) {
@@ -188,8 +190,8 @@ export class PurchasesRepository {
   async findAllForExport(params: {
     requesterId?: string;
     departmentIds?: string[];
-    departmentFilter?: string;
-    supplierId?: string;
+    departmentFilter?: string | string[];
+    supplierId?: string | string[];
     startDate?: string;
     endDate?: string;
     status?: string;
@@ -203,14 +205,18 @@ export class PurchasesRepository {
 
     const where: Prisma.PurchaseWhereInput = {};
     if (status) where.status = status;
-    if (supplierId) where.supplierId = supplierId;
+    if (supplierId) {
+      where.supplierId = Array.isArray(supplierId) ? { in: supplierId } : supplierId;
+    }
     if (startDate || endDate) {
       where.createdAt = {
         ...(startDate ? { gte: new Date(startDate) } : {}),
         ...(endDate ? { lte: new Date(`${endDate}T23:59:59.999Z`) } : {}),
       };
     }
-    if (departmentFilter) where.departmentId = departmentFilter;
+    if (departmentFilter) {
+      where.departmentId = Array.isArray(departmentFilter) ? { in: departmentFilter } : departmentFilter;
+    }
 
     const scopeOr = !isAdmin && requesterId && departmentIds
       ? [{ requesterId }, { departmentId: { in: departmentIds } }]

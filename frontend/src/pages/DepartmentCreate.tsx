@@ -268,12 +268,12 @@ export function DepartmentCreate() {
 
 function formatTimestamp(value?: string) {
   if (!value) {
-    return 'Ainda nao disponivel';
+    return '-';
   }
 
   const date = new Date(value);
   if (Number.isNaN(date.getTime()) || date.getFullYear() < 2000) {
-    return 'Ainda nao disponivel';
+    return '-';
   }
 
   return date.toLocaleString('pt-BR');

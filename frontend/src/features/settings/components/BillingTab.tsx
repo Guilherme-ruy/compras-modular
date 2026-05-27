@@ -7,6 +7,10 @@ export default function BillingTab() {
     const [loading, setLoading] = useState(false);
     const [status, setStatus] = useState<string>('inactive');
     const [renewalDate, setRenewalDate] = useState<string | null>(null);
+    const [planName, setPlanName] = useState<string | null>(null);
+    const [planPrice, setPlanPrice] = useState<number | null>(null);
+    const [currency, setCurrency] = useState<string>('BRL');
+    const [adminEmail, setAdminEmail] = useState<string | null>(null);
     const { user } = useAuth();
     const isAdmin = ['SUPERADMIN', 'TENANT_ADMIN', 'ADMIN', 'Administrador'].includes(user?.roleName ?? '');
 
@@ -17,6 +21,10 @@ export default function BillingTab() {
                 const date = new Date(res.data.renewalDate);
                 setRenewalDate(new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: 'long', year: 'numeric' }).format(date));
             }
+            if (res.data.planName) setPlanName(res.data.planName);
+            if (res.data.planPrice) setPlanPrice(res.data.planPrice);
+            if (res.data.currency) setCurrency(res.data.currency);
+            if (res.data.adminEmail) setAdminEmail(res.data.adminEmail);
         }).catch(err => console.error('Erro ao carregar status da assinatura:', err));
     }, []);
 
@@ -68,7 +76,7 @@ export default function BillingTab() {
                             </div>
                             <div>
                                 <h3 className="text-base font-semibold text-slate-800">
-                                    Plano {isSubscribed ? 'Premium' : (status === 'trialing' ? 'Teste Grátis' : 'Inativo')}
+                                    Plano {planName ? planName : (isSubscribed ? 'Padrão' : (status === 'trialing' ? 'Teste Grátis' : 'Inativo'))}
                                 </h3>
                                 <p className="text-sm text-slate-500 mt-0.5">
                                     {isSubscribed ? 'Acesso total a todos os módulos do sistema.' : 'Sua empresa precisa de uma assinatura para operar.'}
@@ -88,24 +96,36 @@ export default function BillingTab() {
                         )}
                     </div>
 
-                    {isSubscribed && renewalDate && status !== 'canceled' && (
+                    {isSubscribed && status !== 'canceled' && (
                         <div className="mt-8 grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 flex items-center gap-3">
-                                <div className="bg-white p-2 rounded-lg border border-slate-200 shadow-sm">
-                                    <CalendarDays className="h-5 w-5 text-brand-600" />
+                            {renewalDate && (
+                                <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 flex items-center gap-3">
+                                    <div className="bg-white p-2 rounded-lg border border-slate-200 shadow-sm">
+                                        <CalendarDays className="h-5 w-5 text-brand-600" />
+                                    </div>
+                                    <div>
+                                        <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Próxima Renovação</p>
+                                        <p className="text-sm font-bold text-slate-700">{renewalDate}</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Próxima Renovação</p>
-                                    <p className="text-sm font-bold text-slate-700">{renewalDate}</p>
-                                </div>
-                            </div>
+                            )}
                             
                             <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 flex items-center justify-between">
                                 <div>
                                     <p className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">Valor do Plano</p>
-                                    <p className="text-sm font-bold text-slate-700">Consulte no portal</p>
+                                    <p className="text-sm font-bold text-slate-700">
+                                        {planPrice 
+                                            ? new Intl.NumberFormat('pt-BR', { style: 'currency', currency: currency.toUpperCase() }).format(planPrice / 100) 
+                                            : 'Consulte no portal'}
+                                    </p>
                                 </div>
                             </div>
+                        </div>
+                    )}
+
+                    {adminEmail && (
+                        <div className="mt-4 flex items-center gap-2 text-sm text-slate-500">
+                            <span className="font-medium text-slate-600">Admin da Conta:</span> {adminEmail}
                         </div>
                     )}
 

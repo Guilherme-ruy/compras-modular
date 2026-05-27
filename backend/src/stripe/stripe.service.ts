@@ -203,7 +203,7 @@ export class StripeService {
     // DB já está ativo com ID de assinatura: só busca a data de renovação
     if (subscriptionStatus === 'active' && tenant.stripeSubscriptionId) {
       renewalDate = await this.getSubscriptionRenewalDate(tenant.stripeSubscriptionId);
-      return { status: 'active', trialRemainingDays: 0, renewalDate, hasStripeCustomer: true };
+      // Let it fall through to fetch plan details and admin email
     }
 
     // Status não-ativo no banco: consulta a Stripe para garantir consistência
@@ -266,11 +266,61 @@ export class StripeService {
       if (trialRemainingDays < 0) trialRemainingDays = 0;
     }
 
+    let planName = null;
+    let planPrice = null;
+    let currency = null;
+
+    if (tenant.stripeSubscriptionId && subscriptionStatus === 'active') {
+      try {
+        const sub = await this.stripe.subscriptions.retrieve(tenant.stripeSubscriptionId, {
+          expand: ['items.data.price.product']
+        });
+        
+        if (sub.items && sub.items.data.length > 0) {
+          const priceObj = sub.items.data[0].price;
+          if (priceObj) {
+            planPrice = priceObj.unit_amount;
+            currency = priceObj.currency;
+            if (priceObj.product && (priceObj.product as any).name) {
+              planName = (priceObj.product as any).name;
+            }
+          }
+        }
+      } catch (err: any) {
+        this.logger.error(`Falha ao buscar detalhes do plano para ${tenant.stripeSubscriptionId}: ${err.message}`);
+      }
+    }
+
+    // Busca o email do administrador (primeiro usuário ou TENANT_ADMIN)
+    let adminEmail = null;
+    try {
+      const adminUser = await this.prisma.user.findFirst({
+        where: {
+          tenantId,
+          role: {
+            name: { in: ['TENANT_ADMIN', 'SUPERADMIN', 'Administrador'] }
+          }
+        },
+        orderBy: {
+          id: 'asc' // Pega o mais antigo caso tenha vários
+        }
+      });
+      if (adminUser) {
+        adminEmail = adminUser.email;
+      }
+    } catch (err: any) {
+      this.logger.error(`Falha ao buscar email do admin: ${err.message}`);
+    }
+
     return {
       status: subscriptionStatus,
       trialRemainingDays,
       renewalDate,
       hasStripeCustomer: !!tenant.stripeCustomerId,
+      planName,
+      planPrice,
+      currency,
+      adminEmail,
     };
   }
 }

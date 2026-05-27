@@ -79,7 +79,7 @@ export default function App() {
               <Route path="categories" element={<CategoryList />} />
               <Route path="categories/new" element={<CategoryForm />} />
               <Route path="categories/:id/edit" element={<CategoryForm />} />
-              <Route path="relatorios" element={
+              <Route path="reports" element={
                 <SuspenseLoader>
                   <Reports />
                 </SuspenseLoader>

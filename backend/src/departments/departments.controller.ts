@@ -18,12 +18,12 @@ export class DepartmentsController {
   @Get()
   @ApiOperation({ summary: 'Listar departamentos' })
   @ApiQuery({ name: 'search', required: false })
-  @ApiQuery({ name: 'activeOnly', required: false, type: Boolean })
+  @ApiQuery({ name: 'isActive', required: false, type: Boolean })
   @ApiQuery({ name: 'page', required: false, type: Number })
   @ApiQuery({ name: 'perPage', required: false, type: Number })
   findAll(
     @Query('search') search?: string,
-    @Query('activeOnly') activeOnly?: string,
+    @Query('isActive') isActive?: string,
     @Query('page') page?: string,
     @Query('perPage') perPage?: string,
     @Query('sortBy') sortBy?: string,
@@ -31,7 +31,7 @@ export class DepartmentsController {
   ) {
     return this.departmentsService.findAll({
       search,
-      activeOnly: activeOnly === 'true',
+      isActive: isActive === 'true' ? true : isActive === 'false' ? false : undefined,
       page: page ? parseInt(page, 10) : 1,
       perPage: perPage ? parseInt(perPage, 10) : 50,
       sortBy,
